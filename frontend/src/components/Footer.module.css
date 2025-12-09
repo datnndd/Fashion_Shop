@@ -1,0 +1,133 @@
+.footer {
+  padding: var(--space-16) 0 var(--space-8);
+  background-color: var(--color-surface);
+  margin-top: auto;
+  border-top: 1px solid var(--color-border);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-12);
+  margin-bottom: var(--space-16);
+}
+
+.brand {
+  max-width: 300px;
+}
+
+.logo {
+  font-family: var(--font-family-main);
+  font-weight: var(--font-weight-bold);
+  font-size: var(--text-lg);
+  display: block;
+  margin-bottom: var(--space-4);
+  letter-spacing: -0.02em;
+}
+
+.tagline {
+  color: var(--color-text-light);
+  font-size: var(--text-sm);
+  line-height: 1.6;
+}
+
+.links h4,
+.newsletter h4 {
+  font-size: var(--text-sm);
+  font-weight: var(--font-weight-bold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: var(--space-6);
+}
+
+.links ul {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.links a {
+  font-size: var(--text-sm);
+  color: var(--color-text-light);
+  transition: color var(--transition-fast);
+}
+
+.links a:hover {
+  color: var(--color-text-main);
+}
+
+.newsletter p {
+  font-size: var(--text-sm);
+  margin-bottom: var(--space-4);
+}
+
+.form {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.input {
+  flex: 1;
+  padding: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-family: inherit;
+  font-size: var(--text-sm);
+  background: var(--color-background);
+  transition: border-color var(--transition-fast);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+.submitBtn {
+  padding: var(--space-3) var(--space-5);
+  background: var(--color-primary);
+  color: var(--color-background);
+  font-size: var(--text-sm);
+  font-weight: var(--font-weight-medium);
+  border-radius: var(--radius-sm);
+  transition: background var(--transition-fast);
+}
+
+.submitBtn:hover {
+  background: var(--color-accent);
+}
+
+.bottom {
+  padding-top: var(--space-8);
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  align-items: center;
+  font-size: var(--text-xs);
+  color: var(--color-text-light);
+}
+
+.social {
+  display: flex;
+  gap: var(--space-6);
+}
+
+.social a {
+  transition: color var(--transition-fast);
+}
+
+.social a:hover {
+  color: var(--color-text-main);
+}
+
+@media (min-width: 768px) {
+  .grid {
+    grid-template-columns: 2fr 1fr 1fr 2fr;
+    gap: var(--space-8);
+  }
+
+  .bottom {
+    flex-direction: row;
+    justify-content: space-between;
+  }
+}

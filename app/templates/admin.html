@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Fashion Shop Admin</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        :root {
+            --bg: #0f172a;
+            --panel: #111827;
+            --accent: #06b6d4;
+            --muted: #cbd5e1;
+            --text: #e2e8f0;
+            --danger: #ef4444;
+            --success: #22c55e;
+        }
+        body {
+            margin: 0;
+            font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #0b1224, #131c33);
+            color: var(--text);
+        }
+        header {
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            background: rgba(15, 23, 42, 0.9);
+            backdrop-filter: blur(6px);
+            border-bottom: 1px solid #1f2937;
+            z-index: 10;
+        }
+        h1 {
+            margin: 0;
+            font-size: 22px;
+            letter-spacing: 0.5px;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 16px;
+            padding: 20px;
+        }
+        .card {
+            background: var(--panel);
+            border: 1px solid #1f2937;
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+        }
+        .card h2 {
+            margin: 0 0 12px;
+            font-size: 18px;
+        }
+        form {
+            display: grid;
+            gap: 10px;
+        }
+        label {
+            display: flex;
+            flex-direction: column;
+            font-size: 13px;
+            color: var(--muted);
+            gap: 6px;
+        }
+        input, textarea, select {
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #1f2937;
+            background: #0b1224;
+            color: var(--text);
+            font-size: 14px;
+        }
+        textarea { min-height: 90px; }
+        .row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 10px;
+        }
+        button {
+            padding: 10px 14px;
+            border: none;
+            border-radius: 10px;
+            background: var(--accent);
+            color: #0b1224;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 120ms ease, box-shadow 120ms ease;
+        }
+        button:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(6, 182, 212, 0.25); }
+        button:active { transform: translateY(0); }
+        .status {
+            padding: 10px 14px;
+            background: #0b1224;
+            border: 1px solid #1f2937;
+            border-radius: 10px;
+            font-size: 13px;
+            min-height: 42px;
+        }
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            background: #0b1224;
+            border: 1px solid #1f2937;
+        }
+        .pill.ok { color: var(--success); border-color: #134e4a; }
+        .pill.err { color: var(--danger); border-color: #7f1d1d; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        th, td {
+            padding: 8px;
+            border-bottom: 1px solid #1f2937;
+        }
+        th { text-align: left; color: var(--muted); font-weight: 600; }
+        .muted { color: var(--muted); font-size: 12px; }
+    </style>
+</head>
+<body>
+    <header>
+        <div>
+            <h1>Fashion Shop Admin</h1>
+            <div class="muted">Quick controls for catalog and locations</div>
+        </div>
+        <div id="health-pill" class="pill err">Checking...</div>
+    </header>
+
+    <div class="grid">
+        <div class="card">
+            <h2>Category</h2>
+            <form id="category-form">
+                <label>Name <input name="name" required></label>
+                <label>Slug <input name="slug" placeholder="auto from name"></label>
+                <label>Description <textarea name="description"></textarea></label>
+                <label><input type="checkbox" name="is_active" checked> Active</label>
+                <button type="submit">Create category</button>
+            </form>
+        </div>
+
+        <div class="card">
+            <h2>Product</h2>
+            <form id="product-form">
+                <label>Category
+                    <select name="category_id" id="category-select" required></select>
+                </label>
+                <label>Name <input name="name" required></label>
+                <label>Slug <input name="slug" placeholder="auto from name"></label>
+                <label>Description <textarea name="description"></textarea></label>
+                <div class="row">
+                    <label>Base price <input name="base_price" type="number" step="0.01" required></label>
+                    <label><input type="checkbox" name="is_published" checked> Published</label>
+                </div>
+                <button type="submit">Create product</button>
+            </form>
+        </div>
+
+        <div class="card">
+            <h2>Variant</h2>
+            <form id="variant-form">
+                <label>Product ID <input name="product_id" type="number" min="1" required></label>
+                <label>SKU <input name="sku" required></label>
+                <label>Attributes (JSON) <textarea name="attributes" placeholder='{"color":"red","size":"M"}'></textarea></label>
+                <div class="row">
+                    <label>Price <input name="price" type="number" step="0.01" required></label>
+                    <label>Stock <input name="stock" type="number" min="0" required></label>
+                </div>
+                <label>Image URL <input name="image_url"></label>
+                <label><input type="checkbox" name="is_active" checked> Active</label>
+                <button type="submit">Create variant</button>
+            </form>
+        </div>
+
+        <div class="card">
+            <h2>Locations</h2>
+            <form id="province-form">
+                <div class="row">
+                    <label>Code <input name="code" required></label>
+                    <label>Name <input name="name" required></label>
+                </div>
+                <button type="submit">Add province</button>
+            </form>
+            <form id="ward-form" style="margin-top:12px;">
+                <div class="row">
+                    <label>Province ID <input name="province_id" type="number" required></label>
+                    <label>Code <input name="code" required></label>
+                </div>
+                <label>Name <input name="name" required></label>
+                <button type="submit">Add ward</button>
+            </form>
+        </div>
+
+        <div class="card" style="grid-column: 1 / -1;">
+            <h2>Categories snapshot</h2>
+            <div id="category-table" class="muted">No data yet.</div>
+        </div>
+
+        <div class="card" style="grid-column: 1 / -1;">
+            <h2>Status</h2>
+            <div id="status" class="status">Ready.</div>
+        </div>
+    </div>
+
+    <script>
+        const apiBase = window.location.origin;
+        const statusBox = document.getElementById("status");
+        const healthPill = document.getElementById("health-pill");
+        const categorySelect = document.getElementById("category-select");
+        const categoryTable = document.getElementById("category-table");
+
+        const slugify = (text) => text
+            .toLowerCase()
+            .trim()
+            .replace(/[^a-z0-9]+/g, "-")
+            .replace(/^-+|-+$/g, "");
+
+        const setStatus = (msg, isError = false) => {
+            statusBox.textContent = msg;
+            statusBox.style.borderColor = isError ? "var(--danger)" : "#1f2937";
+        };
+
+        const checkHealth = async () => {
+            try {
+                const res = await fetch(apiBase + "/health");
+                if (!res.ok) throw new Error("Health check failed");
+                const data = await res.json();
+                healthPill.textContent = "API OK";
+                healthPill.classList.remove("err");
+                healthPill.classList.add("ok");
+                setStatus("API ready: " + (data.status || "ok"));
+            } catch (e) {
+                healthPill.textContent = "API DOWN";
+                healthPill.classList.remove("ok");
+                healthPill.classList.add("err");
+                setStatus(e.message, true);
+            }
+        };
+
+        const apiPost = async (path, payload) => {
+            const res = await fetch(apiBase + path, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.detail || JSON.stringify(data));
+            return data;
+        };
+
+        const loadCategories = async () => {
+            const res = await fetch(apiBase + "/catalog/categories");
+            const data = await res.json();
+            categorySelect.innerHTML = "";
+            if (data.length === 0) {
+                categorySelect.innerHTML = '<option value="">No categories</option>';
+                categoryTable.textContent = "No data yet.";
+                return;
+            }
+            data.forEach((cat) => {
+                const opt = document.createElement("option");
+                opt.value = cat.category_id;
+                opt.textContent = `${cat.name} (#${cat.category_id})`;
+                categorySelect.appendChild(opt);
+            });
+            const rows = data.map(
+                (c) => `<tr><td>${c.category_id}</td><td>${c.name}</td><td>${c.slug}</td><td>${c.is_active ? "Active" : "Hidden"}</td></tr>`
+            ).join("");
+            categoryTable.innerHTML = `<table><thead><tr><th>ID</th><th>Name</th><th>Slug</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table>`;
+        };
+
+        document.getElementById("category-form").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const form = e.target;
+            const payload = {
+                name: form.name.value.trim(),
+                slug: form.slug.value.trim() || slugify(form.name.value),
+                description: form.description.value.trim() || null,
+                parent_id: null,
+                is_active: form.is_active.checked,
+            };
+            try {
+                const data = await apiPost("/catalog/categories", payload);
+                setStatus("Category created: " + data.name);
+                form.reset();
+                await loadCategories();
+            } catch (err) {
+                setStatus(err.message, true);
+            }
+        });
+
+        document.getElementById("product-form").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const form = e.target;
+            if (!form.category_id.value) return setStatus("Select a category first", true);
+            const payload = {
+                category_id: Number(form.category_id.value),
+                name: form.name.value.trim(),
+                slug: form.slug.value.trim() || slugify(form.name.value),
+                description: form.description.value.trim() || null,
+                base_price: Number(form.base_price.value),
+                thumbnail: null,
+                is_published: form.is_published.checked,
+            };
+            try {
+                const data = await apiPost("/catalog/products", payload);
+                setStatus("Product created: " + data.name + " (ID " + data.product_id + ")");
+                form.reset();
+                await loadCategories();
+            } catch (err) {
+                setStatus(err.message, true);
+            }
+        });
+
+        document.getElementById("variant-form").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const form = e.target;
+            let attrs = null;
+            if (form.attributes.value.trim()) {
+                try {
+                    attrs = JSON.parse(form.attributes.value);
+                } catch (err) {
+                    setStatus("Attributes must be valid JSON", true);
+                    return;
+                }
+            }
+            const payload = {
+                sku: form.sku.value.trim(),
+                attributes: attrs,
+                price: Number(form.price.value),
+                stock: Number(form.stock.value),
+                image_url: form.image_url.value.trim() || null,
+                is_active: form.is_active.checked,
+            };
+            try {
+                const productId = Number(form.product_id.value);
+                const data = await apiPost(`/catalog/products/${productId}/variants`, payload);
+                setStatus("Variant created: " + data.sku + " (#" + data.variant_id + ")");
+                form.reset();
+            } catch (err) {
+                setStatus(err.message, true);
+            }
+        });
+
+        document.getElementById("province-form").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const form = e.target;
+            const payload = { code: form.code.value.trim(), name: form.name.value.trim() };
+            try {
+                const data = await apiPost("/locations/provinces", payload);
+                setStatus("Province created: " + data.name);
+                form.reset();
+            } catch (err) {
+                setStatus(err.message, true);
+            }
+        });
+
+        document.getElementById("ward-form").addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const form = e.target;
+            const payload = {
+                province_id: Number(form.province_id.value),
+                code: form.code.value.trim(),
+                name: form.name.value.trim(),
+            };
+            try {
+                const data = await apiPost("/locations/wards", payload);
+                setStatus("Ward created: " + data.name);
+                form.reset();
+            } catch (err) {
+                setStatus(err.message, true);
+            }
+        });
+
+        checkHealth().then(loadCategories);
+    </script>
+</body>
+</html>
