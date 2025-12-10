@@ -1,27 +1,37 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
 import styles from './ProductCard.module.css';
 
 const ProductCard = ({ product }) => {
-  return (
-    <Link to={`/products/${product.id}`} className={styles.card}>
-      <div className={styles.imageWrapper}>
-        <img
-          src={product.image}
-          alt={product.name}
-          className={styles.image}
-        />
-        {/* Placeholder for hover image or quick add */}
-        <div className={styles.overlay}>
-          <span className={styles.quickView}>View Details</span>
+    const { name, brand, price, colors, label, imageColor } = product;
+
+    return (
+        <div className={styles.productCard}>
+            <div className={styles.productImageWrapper}>
+                {label && <div className={styles.productLabel}>{label}</div>}
+                {/* Placeholder image or solid color based on design */}
+                <div style={{ width: '100%', height: '100%', background: imageColor || '#f4f4f4' }}></div>
+            </div>
+            <div className={styles.productBody}>
+                <div className={styles.productBrand}>{brand || 'basic color'}</div>
+                <div className={styles.productName}>{name}</div>
+                <div className={styles.productPrice}>{price}</div>
+
+                {colors && colors.length > 0 && (
+                    <div className={styles.productColors}>
+                        {colors.map((color, index) => (
+                            <div
+                                key={index}
+                                className={styles.productColorDot}
+                                style={{ background: color }}
+                            />
+                        ))}
+                    </div>
+                )}
+
+                <button className={styles.productBtn}>Thêm vào giỏ</button>
+            </div>
         </div>
-      </div>
-      <div className={styles.info}>
-        <h3 className={styles.name}>{product.name}</h3>
-        <p className={styles.price}>${product.price.toFixed(2)}</p>
-      </div>
-    </Link>
-  );
+    );
 };
 
 export default ProductCard;
