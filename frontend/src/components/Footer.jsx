@@ -1,119 +1,45 @@
-import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
-
-const Footer = () => {
-    return (
-        <footer className="bg-white border-t border-gray-100">
-            {/* Main footer */}
-            <div className="max-w-7xl mx-auto px-4 md:px-8 py-12 md:py-16">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-                    {/* Brand column */}
-                    <div className="lg:col-span-1">
-                        <Link to="/" className="inline-block mb-4">
-                            <span className="text-xl font-semibold tracking-tight">
-                                BASIC<span className="font-light">COLOR</span>
-                            </span>
-                        </Link>
-                        <p className="text-sm text-gray-500 mb-6 max-w-xs">
-                            Áo quần đơn sắc, phong cách tối giản. Canvas hoàn hảo cho thương hiệu của bạn.
-                        </p>
-                        <div className="flex gap-4">
-                            {['📘', '📸', '🐦'].map((icon, i) => (
-                                <motion.button
-                                    key={i}
-                                    className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-lg hover:bg-gray-200 transition-colors"
-                                    whileHover={{ scale: 1.1 }}
-                                    whileTap={{ scale: 0.95 }}
-                                >
-                                    {icon}
-                                </motion.button>
-                            ))}
+const Footer = () => (
+    <footer className="bg-black py-12 border-t border-white/10 mt-auto w-full">
+        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-12">
+                <div className="col-span-1 md:col-span-2">
+                    <div className="flex items-center gap-2 mb-6">
+                        <div className="text-white size-6">
+                            <svg className="h-full w-full" fill="currentColor" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+                                <path clipRule="evenodd" d="M12.0799 24L4 19.2479L9.95537 8.75216L18.04 13.4961L18.0446 4H29.9554L29.96 13.4961L38.0446 8.75216L44 19.2479L35.92 24L44 28.7521L38.0446 39.2479L29.96 34.5039L29.9554 44H18.0446L18.04 34.5039L9.95537 39.2479L4 28.7521L12.0799 24Z" fillRule="evenodd"></path>
+                            </svg>
                         </div>
+                        <span className="text-lg font-bold uppercase tracking-tight text-white">BasicColor</span>
                     </div>
-
-                    {/* Links columns */}
-                    <div>
-                        <h4 className="text-sm font-medium uppercase tracking-wider mb-4">Sản phẩm</h4>
-                        <ul className="space-y-3">
-                            {['Áo thun', 'Áo polo', 'Quần dài', 'Áo khoác', 'Phụ kiện'].map((item) => (
-                                <li key={item}>
-                                    <a href="#" className="text-sm text-gray-500 hover:text-black transition-colors">
-                                        {item}
-                                    </a>
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-
-                    <div>
-                        <h4 className="text-sm font-medium uppercase tracking-wider mb-4">Hỗ trợ</h4>
-                        <ul className="space-y-3">
-                            {['Liên hệ', 'Đổi trả', 'Chính sách giao hàng', 'FAQ', 'Bảng size'].map((item) => (
-                                <li key={item}>
-                                    <a href="#" className="text-sm text-gray-500 hover:text-black transition-colors">
-                                        {item}
-                                    </a>
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-
-                    <div>
-                        <h4 className="text-sm font-medium uppercase tracking-wider mb-4">Về chúng tôi</h4>
-                        <ul className="space-y-3">
-                            {['Câu chuyện', 'Đội ngũ', 'Tuyển dụng', 'Blog', 'Đối tác'].map((item) => (
-                                <li key={item}>
-                                    <a href="#" className="text-sm text-gray-500 hover:text-black transition-colors">
-                                        {item}
-                                    </a>
-                                </li>
-                            ))}
-                        </ul>
+                    <p className="text-white/50 text-sm max-w-xs">
+                        Celebrating color diversity through bold monochrome fashion. Designed for the modern expressive individual.
+                    </p>
+                </div>
+                <div>
+                    <h4 className="text-white font-bold uppercase mb-4 text-sm tracking-wider">Help</h4>
+                    <ul className="space-y-2 text-sm text-white/50">
+                        <li><a className="hover:text-primary transition-colors" href="#">Shipping & Returns</a></li>
+                        <li><a className="hover:text-primary transition-colors" href="#">Size Guide</a></li>
+                        <li><a className="hover:text-primary transition-colors" href="#">FAQ</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 className="text-white font-bold uppercase mb-4 text-sm tracking-wider">Social</h4>
+                    <div className="flex gap-4">
+                        <a className="h-10 w-10 rounded-full bg-white/5 flex items-center justify-center text-white hover:bg-primary hover:text-white transition-all" href="#"><span className="material-symbols-outlined text-xl">camera_alt</span></a>
+                        <a className="h-10 w-10 rounded-full bg-white/5 flex items-center justify-center text-white hover:bg-primary hover:text-white transition-all" href="#"><span className="material-symbols-outlined text-xl">music_note</span></a>
                     </div>
                 </div>
             </div>
-
-            {/* Newsletter bar */}
-            <div className="bg-gray-50 py-8">
-                <div className="max-w-7xl mx-auto px-4 md:px-8">
-                    <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-                        <div>
-                            <h4 className="text-sm font-medium mb-1">Đăng ký nhận tin</h4>
-                            <p className="text-xs text-gray-500">Nhận ưu đãi và cập nhật bộ sưu tập mới</p>
-                        </div>
-                        <div className="flex gap-2 w-full md:w-auto">
-                            <input
-                                type="email"
-                                placeholder="Email của bạn"
-                                className="flex-1 md:w-64 px-4 py-2 rounded-full border border-gray-200 text-sm focus:outline-none focus:border-gray-400"
-                            />
-                            <motion.button
-                                className="px-6 py-2 bg-black text-white text-sm font-medium rounded-full"
-                                whileHover={{ scale: 1.02 }}
-                                whileTap={{ scale: 0.98 }}
-                            >
-                                Đăng ký
-                            </motion.button>
-                        </div>
-                    </div>
+            <div className="border-t border-white/10 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
+                <p className="text-white/30 text-xs">© 2023 BasicColor. All rights reserved.</p>
+                <div className="flex gap-6 text-xs text-white/30">
+                    <a className="hover:text-white" href="#">Privacy Policy</a>
+                    <a className="hover:text-white" href="#">Terms of Service</a>
                 </div>
             </div>
-
-            {/* Copyright */}
-            <div className="border-t border-gray-100 py-6">
-                <div className="max-w-7xl mx-auto px-4 md:px-8">
-                    <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-gray-400">
-                        <p>© 2024 Basic Color. All rights reserved.</p>
-                        <div className="flex gap-6">
-                            <a href="#" className="hover:text-gray-600">Điều khoản</a>
-                            <a href="#" className="hover:text-gray-600">Bảo mật</a>
-                            <a href="#" className="hover:text-gray-600">Cookies</a>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </footer>
-    );
-};
+        </div>
+    </footer>
+);
 
 export default Footer;
