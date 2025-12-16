@@ -59,14 +59,52 @@ async def create_product(payload: ProductCreate, session: AsyncSession = Depends
     return product
 
 
+@router.get("/products/{product_id}", response_model=ProductRead)
+async def get_product(
+    product_id: int,
+    session: AsyncSession = Depends(get_session),
+) -> ProductRead:
+    """Get a single product by ID."""
+    product = await session.get(Product, product_id)
+    if not product:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
+    return product
+
+
 @router.get("/products", response_model=list[ProductRead])
 async def list_products(
     category_id: int | None = Query(default=None),
+    is_new: bool | None = Query(default=None),
+    is_sale: bool | None = Query(default=None),
+    is_published: bool | None = Query(default=True),
+    sort_by: str | None = Query(default=None, description="Sort field: 'price_asc', 'price_desc', 'newest'"),
+    limit: int = Query(default=20, le=100),
+    offset: int = Query(default=0),
     session: AsyncSession = Depends(get_session),
 ) -> list[ProductRead]:
+    """List products with optional filters and sorting."""
     query = select(Product)
+    
     if category_id is not None:
         query = query.where(Product.category_id == category_id)
+    if is_new is not None:
+        query = query.where(Product.is_new == is_new)
+    if is_sale is not None:
+        query = query.where(Product.is_sale == is_sale)
+    if is_published is not None:
+        query = query.where(Product.is_published == is_published)
+    
+    # Sorting
+    if sort_by == "price_asc":
+        query = query.order_by(Product.base_price.asc())
+    elif sort_by == "price_desc":
+        query = query.order_by(Product.base_price.desc())
+    elif sort_by == "newest":
+        query = query.order_by(Product.created_at.desc())
+    else:
+        query = query.order_by(Product.created_at.desc())  # Default to newest
+    
+    query = query.offset(offset).limit(limit)
     result = await session.scalars(query)
     return list(result.all())
 

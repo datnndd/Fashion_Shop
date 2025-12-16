@@ -30,8 +30,11 @@ class Review(Base):
     product_id: Mapped[int] = mapped_column(ForeignKey("products.product_id"))
     order_item_id: Mapped[int] = mapped_column(ForeignKey("order_items.order_item_id"), unique=True)
     rating: Mapped[int] = mapped_column(Integer)
+    title: Mapped[str | None] = mapped_column(String(255), nullable=True)
     comment: Mapped[str | None] = mapped_column(Text, nullable=True)
     images: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    helpful_count: Mapped[int] = mapped_column(Integer, default=0)
+    size_purchased: Mapped[str | None] = mapped_column(String(20), nullable=True)
     created_at: Mapped[DateTime] = mapped_column(DateTime, server_default=func.now())
     is_approved: Mapped[bool] = mapped_column(Boolean, default=True)
 

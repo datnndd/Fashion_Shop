@@ -1,15 +1,89 @@
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap');
+@import "tailwindcss";
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* Custom theme configuration */
+@theme {
+  /* Colors */
+  --color-primary: #C07B5F;
+  --color-primary-hover: #A66A51;
+  --color-background-light: #FAF8F5;
+  --color-background-dark: #1F1B18;
+  --color-surface-dark: #2B2520;
+  --color-surface-light: #ffffff;
+  --color-border-dark: #3D3530;
+  --color-text-muted: #B5A69A;
 
-.material-symbols-outlined {
-  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  /* Fonts */
+  --font-display: "Space Grotesk", sans-serif;
+  --font-sans: "Noto Sans", sans-serif;
+
+  /* Border Radius */
+  --radius-DEFAULT: 0.25rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+  --radius-2xl: 1rem;
+  --radius-full: 9999px;
 }
 
-body {
-  visibility: visible;
+/* Custom scrollbar styles */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #3D3530;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #C07B5F;
+}
+
+/* Scrollbar hide utility */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Cosmic background */
+.cosmic-bg {
+  background-color: #1F1B18;
+  background-image:
+    radial-gradient(at 0% 0%, hsla(25, 35%, 20%, 1) 0, transparent 50%),
+    radial-gradient(at 100% 0%, hsla(20, 30%, 18%, 1) 0, transparent 50%),
+    radial-gradient(at 100% 100%, hsla(30, 25%, 12%, 1) 0, transparent 50%),
+    radial-gradient(at 0% 100%, hsla(15, 40%, 10%, 1) 0, transparent 50%);
+  background-attachment: fixed;
+}
+
+/* Dark mode */
+.dark {
+  color-scheme: dark;
+}
+
+/* Hide details marker */
+details>summary {
+  list-style: none;
+}
+
+details>summary::-webkit-details-marker {
+  display: none;
+}
+
+/* Material symbols filled */
+.material-symbols-outlined.filled {
+  font-variation-settings: 'FILL' 1;
+}
+
+/* Selection color */
+::selection {
+  background-color: #C07B5F;
+  color: white;
 }

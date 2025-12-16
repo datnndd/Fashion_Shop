@@ -28,6 +28,14 @@ class Product(Base):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     base_price: Mapped[Numeric] = mapped_column(Numeric(15, 2))
     thumbnail: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    
+    # New fields for frontend
+    is_new: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_sale: Mapped[bool] = mapped_column(Boolean, default=False)
+    original_price: Mapped[Numeric | None] = mapped_column(Numeric(15, 2), nullable=True)
+    badge: Mapped[str | None] = mapped_column(String(50), nullable=True)  # "Best Seller", "New", etc.
+    images: Mapped[list | None] = mapped_column(JSON, nullable=True)  # Array of image URLs
+    
     is_published: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[DateTime] = mapped_column(DateTime, server_default=func.now())
     updated_at: Mapped[DateTime | None] = mapped_column(DateTime, nullable=True)
