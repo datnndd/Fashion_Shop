@@ -9,10 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import AsyncSessionLocal
 from app.models.catalog import Category, Product, ProductVariant
-from app.models.collection import Collection, CollectionProduct
-from app.models.marketing import Review
 from app.models.user import User
-
 
 async def seed_categories(session: AsyncSession) -> list[Category]:
     """Create sample categories."""
@@ -38,10 +35,10 @@ async def seed_products(session: AsyncSession, categories: list[Category]) -> li
             "name": "Neon Oversized Knit",
             "slug": "neon-oversized-knit",
             "description": "A bold statement piece featuring our signature neon pink. Made from heavyweight cotton blend for a premium feel.",
-            "base_price": Decimal("120.00"),
+            "base_price": Decimal("3000000"),
             "thumbnail": "https://lh3.googleusercontent.com/aida-public/AB6AXuACQ5EPOfI4E08g7BONgVWum0GxW27TsRFDHaEMOjy05wisQShNoj8SppeNZXiyF0ky_NxJG5N5stwqwisK7VIfc0Nglmf2DDW4NKrw3I2tviR0_YNn3UL1t7sHRYvguNiy7D-FFzMHHLriFzWzyPkqMqtmqkxRtNIqVXdGC8ixYkhNUxWQwu4romhKp0xmHELv1TJcbOCDgdSevZ-smmzgB9dxSGtmNz90QshRGhgICEfAfREUoLQTivRAbkAjLNKk5BS3VSz0E-A",
             "is_new": True,
-            "is_sale": False,
+            "discount_percent": 0,
             "badge": "Best Seller",
         },
         {
@@ -49,72 +46,70 @@ async def seed_products(session: AsyncSession, categories: list[Category]) -> li
             "name": "Urban Tee - Magenta",
             "slug": "urban-tee-magenta",
             "description": "Sleek and versatile. 100% organic cotton for everyday comfort.",
-            "base_price": Decimal("45.00"),
+            "base_price": Decimal("1125000"),
             "thumbnail": "https://lh3.googleusercontent.com/aida-public/AB6AXuCcl_O2s7tEkvre7Sk7DnL5bWi0OI5jrNoYqaj2Py2X40U4tEp9N2t4H8f_0A6H2-OHZEvlX98RgVffy3DNEjGMnmgzulsw5DKssXXNPbNvtGENMyE4iPgHzdkJP4P9yNUOSmmcVLUH3DgL1c-tD9AOIWTMiQtuOZ9Sca74L92wpFAQNtw8C_unlCUuzB390QIBcuRjR58WjbR9q8ofboBinXPdUsW_cgNwqT8VAiR6S0UXzdqy3M_FwMvb0HgjzKCvvi5ImvyAeCk",
             "is_new": False,
-            "is_sale": False,
+            "discount_percent": 0,
         },
         {
             "category": "Outerwear",
             "name": "Structured Blazer",
             "slug": "structured-blazer",
             "description": "Elevate your look with this tailored blazer featuring satin lining.",
-            "base_price": Decimal("185.00"),
+            "base_price": Decimal("4625000"),
             "thumbnail": "https://lh3.googleusercontent.com/aida-public/AB6AXuAia8J0xT8QeGNQHqVJLHz1JYjZ01gfWwJRRJmRpocS3i0zEg4ik8Fwe_XxGwhOCap1nc0u_Yshg_upKLSXMDiE3JEP7U5sbdDH887s69kqvu-WhNaSvDfTLM145Kz_GtHMf_4i_PagFagCq8lgHyAjnP0C9SsPLGWg4bxtOHyagD1T5G0vta53CV6_0Kt5FgamFud8EL2jHmNc4IuklJWqgbiDqchGlu2rBzwJmUM5KQcRYR-zSeUh3bLomqMCzu027rBalTZ0raM",
             "is_new": True,
-            "is_sale": False,
+            "discount_percent": 0,
         },
         {
             "category": "Outerwear",
             "name": "Tech Fleece Zip",
             "slug": "tech-fleece-zip",
             "description": "Water resistant tech fleece for active lifestyles.",
-            "base_price": Decimal("95.00"),
+            "base_price": Decimal("2375000"),
             "thumbnail": "https://lh3.googleusercontent.com/aida-public/AB6AXuCxyKgVtVY0kT___pDAnWxcUQa6iNJv_Kg2Xjf7V-DnFkYp3gNpVqe_6if0V9W1neB4piDgsWd3uLUdnnUlipdGoiPEUiYeIiGxwKD-Ud7OeODcnLqJoFUids5xaTuL_d47u9EJdxV7sCRXBMipWz4vFPSGmLmASschqVUJ5KZePcUkBi50jNd1vFEpI_uLe5GRzKJ3rUvndO3Z1BBstI8ehFvwqOZnK7aL9QjuGU19pQm4GaT0B9XpNuMh2N3kECcCMEy80ljTFtM",
             "is_new": False,
-            "is_sale": False,
+            "discount_percent": 0,
         },
         {
             "category": "Hoodies",
             "name": "Core Hoodie",
             "slug": "core-hoodie",
             "description": "Fleece lined hoodie for maximum comfort. On sale now!",
-            "base_price": Decimal("55.00"),
-            "original_price": Decimal("75.00"),
+            "base_price": Decimal("1875000"),
             "thumbnail": "https://lh3.googleusercontent.com/aida-public/AB6AXuD7XZij8-Dh0yB6Dle4ettsozJSEuakLzxip8Sg2fm_nFW78gzA3_FB4jB1HPmRJOGwfvq_rvvV4_J7lmPypVP3PPJCBEnSDA0AAR5tPQSWcb38D9opdCXQf3fuwg6XbCPkndDLQVUhT-FaFHD4uXuIPjmcFJSosQy1CVEcCwEiMjfszb8rIbNjI8z04qE8n7joYkkksA4CCusO82A9ertkGTiuAweqVmXNWhS0hBTZWjxdYZ5-UbJlGm6aXnROQdN8F5f3H83P08c",
             "is_new": False,
-            "is_sale": True,
+            "discount_percent": 25,
         },
         {
             "category": "Shirts",
             "name": "Summer Linen Shirt",
             "slug": "summer-linen-shirt",
             "description": "Breathable linen fabric perfect for warm weather.",
-            "base_price": Decimal("80.00"),
+            "base_price": Decimal("2000000"),
             "thumbnail": "https://lh3.googleusercontent.com/aida-public/AB6AXuA5IMou7SnWz0eActU9SSPJFBa5_-s-uD_U3qZc-c8ieuHqb-WGIyetCo37sR8GvBOOvtVNYuCFlHUw9m7iGNc3d2sbSTM4Op5-sWyOD_gszmNlmFYFCqEql5K6wh0qXTdtUH_WCdcV0Ftr-KJfvgwecIOenLuzlX7qA8OLBOmp-8CXBsWMxD_SiEVkHOqsX0gS-eLQ3FiH2yUd-Fmdh8ksUJWcktI1owhktDl-jh4HLLvrdEzsM1Dv8R7lo_4FUaZGV-wUuslQqL4",
             "is_new": False,
-            "is_sale": False,
+            "discount_percent": 0,
         },
         {
             "category": "Hoodies",
             "name": "Essential Pullover",
             "slug": "essential-pullover",
             "description": "Your everyday go-to hoodie. Soft, comfortable, and stylish.",
-            "base_price": Decimal("65.00"),
+            "base_price": Decimal("1625000"),
             "thumbnail": "https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=400",
             "is_new": True,
-            "is_sale": False,
+            "discount_percent": 0,
         },
         {
             "category": "Pants",
             "name": "Slim Fit Chinos",
             "slug": "slim-fit-chinos",
             "description": "Versatile chinos that work for any occasion.",
-            "base_price": Decimal("75.00"),
-            "original_price": Decimal("95.00"),
+            "base_price": Decimal("2375000"),
             "thumbnail": "https://images.unsplash.com/photo-1473966968600-fa801b869a1a?w=400",
             "is_new": False,
-            "is_sale": True,
+            "discount_percent": 20,
         },
     ]
     
@@ -166,85 +161,28 @@ async def seed_variants(session: AsyncSession, products: list[Product]) -> list[
     return variants
 
 
-async def seed_collections(session: AsyncSession, products: list[Product]) -> list[Collection]:
-    """Create collections with themes."""
-    collections_data = [
-        {
-            "name": "Neon Pulse",
-            "slug": "neon-pulse",
-            "description": "Dive into the electric energy of our boldest pinks.",
-            "accent_color": "#d411d4",
-            "secondary_color": "#c992c9",
-            "border_color": "#673267",
-            "panel_bg_color": "#482348",
-            "gradient_overlay": "radial-gradient(at 0% 0%, hsla(300, 35%, 20%, 1) 0, transparent 50%), radial-gradient(at 100% 0%, hsla(280, 30%, 18%, 1) 0, transparent 50%), radial-gradient(at 100% 100%, hsla(290, 25%, 12%, 1) 0, transparent 50%), radial-gradient(at 0% 100%, hsla(310, 40%, 10%, 1) 0, transparent 50%)",
-            "image_overlay": "https://lh3.googleusercontent.com/aida-public/AB6AXuB64Fs0LjzLIgV5FBF6mVnLg2m-bnajp64V2f82j3hMJDmLqpN5K3a3X2-g3cOzNFz4CBG4io3zhInj5d82Rstov7XqqnFSnRTF5cS5kDYadX7zzegA_VZLR4GwF9zRzaRAhObATtwgoXWI_YeGJTt_6h8Gt0czlFnU8N9rU18RaHTtdCdEVNGhec8Gv3vsqB4eraLv9HWFLgvyfN-TPBIGd1wAUfSTANhLNlN2aukJv2pZ0H-SM8w30FemIaQq2hq8wYHmfwNgKug",
-        },
-        {
-            "name": "Ocean Depths",
-            "slug": "ocean-depths",
-            "description": "Calm, cool, and collected. The serenity of the deep blue.",
-            "accent_color": "#0ea5e9",
-            "secondary_color": "#7dd3fc",
-            "border_color": "#0369a1",
-            "panel_bg_color": "#0c4a6e",
-            "gradient_overlay": "radial-gradient(at 0% 0%, hsla(210, 35%, 20%, 1) 0, transparent 50%), radial-gradient(at 100% 0%, hsla(200, 30%, 18%, 1) 0, transparent 50%), radial-gradient(at 100% 100%, hsla(220, 25%, 12%, 1) 0, transparent 50%), radial-gradient(at 0% 100%, hsla(190, 40%, 10%, 1) 0, transparent 50%)",
-            "image_overlay": "https://images.unsplash.com/photo-1550684848-fac1c5b4e853?q=80&w=2070&auto=format&fit=crop",
-        },
-        {
-            "name": "Solar Flare",
-            "slug": "solar-flare",
-            "description": "Warmth and radiance. Ignite your style with fiery hues.",
-            "accent_color": "#f97316",
-            "secondary_color": "#fdba74",
-            "border_color": "#c2410c",
-            "panel_bg_color": "#7c2d12",
-            "gradient_overlay": "radial-gradient(at 0% 0%, hsla(30, 35%, 20%, 1) 0, transparent 50%), radial-gradient(at 100% 0%, hsla(15, 30%, 18%, 1) 0, transparent 50%), radial-gradient(at 100% 100%, hsla(25, 25%, 12%, 1) 0, transparent 50%), radial-gradient(at 0% 100%, hsla(10, 40%, 10%, 1) 0, transparent 50%)",
-            "image_overlay": "https://images.unsplash.com/photo-1544965851-da28441cd5ad?q=80&w=2089&auto=format&fit=crop",
-        },
-        {
-            "name": "Forest Whisper",
-            "slug": "forest-whisper",
-            "description": "Grounded and organic. Connect with nature's finest greens.",
-            "accent_color": "#22c55e",
-            "secondary_color": "#86efac",
-            "border_color": "#15803d",
-            "panel_bg_color": "#14532d",
-            "gradient_overlay": "radial-gradient(at 0% 0%, hsla(140, 35%, 20%, 1) 0, transparent 50%), radial-gradient(at 100% 0%, hsla(120, 30%, 18%, 1) 0, transparent 50%), radial-gradient(at 100% 100%, hsla(150, 25%, 12%, 1) 0, transparent 50%), radial-gradient(at 0% 100%, hsla(130, 40%, 10%, 1) 0, transparent 50%)",
-            "image_overlay": "https://images.unsplash.com/photo-1518531933037-91b2f5f229cc?q=80&w=1527&auto=format&fit=crop",
-        },
-    ]
-    
-    collections = []
-    for data in collections_data:
-        collection = Collection(is_active=True, **data)
-        session.add(collection)
-        collections.append(collection)
-    
-    await session.flush()
-    
-    # Assign products to collections
-    for i, collection in enumerate(collections):
-        # Each collection gets a subset of products
-        for product in products[i:i+4]:
-            cp = CollectionProduct(
-                collection_id=collection.collection_id,
-                product_id=product.product_id
-            )
-            session.add(cp)
-    
-    await session.flush()
-    return collections
+
 
 
 async def seed_users(session: AsyncSession) -> list[User]:
-    """Create sample users."""
+    """Create sample users including an admin user."""
+    from app.utils.security import hash_password
+    
     users = [
-        User(name="Sarah Mitchell", email="sarah@email.com", password_hash="hashed", is_active=True),
-        User(name="James Kennedy", email="james@email.com", password_hash="hashed", is_active=True),
-        User(name="Emily Rodriguez", email="emily@email.com", password_hash="hashed", is_active=True),
-        User(name="Marcus Thompson", email="marcus@email.com", password_hash="hashed", is_active=True),
-        User(name="Alex Parker", email="alex@email.com", password_hash="hashed", is_active=True),
+        # Admin user with proper password
+        User(
+            name="Admin User",
+            email="admin@basiccolor.com",
+            password_hash=hash_password("admin123"),
+            role="admin",
+            is_active=True
+        ),
+        # Regular customers
+        User(name="Sarah Mitchell", email="sarah@email.com", password_hash=hash_password("password123"), is_active=True),
+        User(name="James Kennedy", email="james@email.com", password_hash=hash_password("password123"), is_active=True),
+        User(name="Emily Rodriguez", email="emily@email.com", password_hash=hash_password("password123"), is_active=True),
+        User(name="Marcus Thompson", email="marcus@email.com", password_hash=hash_password("password123"), is_active=True),
+        User(name="Alex Parker", email="alex@email.com", password_hash=hash_password("password123"), is_active=True),
     ]
     
     for user in users:
@@ -274,8 +212,7 @@ async def seed_database():
         variants = await seed_variants(session, products)
         print(f"✓ Created {len(variants)} variants")
         
-        collections = await seed_collections(session, products)
-        print(f"✓ Created {len(collections)} collections")
+
         
         users = await seed_users(session)
         print(f"✓ Created {len(users)} users")

@@ -1,7 +1,16 @@
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { formatPriceVND } from '../utils/currency';
+import { useAuth } from '../context/AuthContext';
 
 const AccountPage = () => {
     const location = useLocation();
+    const navigate = useNavigate();
+    const { logout } = useAuth();
+
+    const handleLogout = () => {
+        logout();
+        navigate('/');
+    };
 
     const navItems = [
         { path: '/account', icon: 'dashboard', label: 'Overview' },
@@ -15,25 +24,25 @@ const AccountPage = () => {
         {
             id: 1,
             name: 'Yellow Pleated Skirt',
-            price: '$89.00',
+            price: 2225000,
             image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAyuWzHrKdE0TkJv1KILouRvkHdH52K9DOXLAvFUj6v-CKCPuqfRNuuAD3TXTonvbWtSOC1fDujZZVNg9tQFD41k0UoU8wCoGxLYxtBDB_HUd42wEUXB-DevtPzdn1SbjiCu25zYJPLLgpL07hnmYGPcWpX3Vdy0PqvH-7Lsz-G6GPtsBI_G14Nqn4sQ-ULn37EIX87-Vkj92sBTsAJc_jAtwjBBKYqF3E5DwCOgDwgVp8RV3rfLQeeePQVM5srvLiAp_mcMcwKDqc',
         },
         {
             id: 2,
             name: 'Velvet Midnight Dress',
-            price: '$120.00',
+            price: 3000000,
             image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuChYRrdwa9mdWmUfDstL8P46YJcG86E5cMC7DIxuvttQb9I9xCeoqVuaBxogwb0nKgSaH6Ru49ZnyGBFYiZGLIldwk82_XtEfkUfvdwcmlw_sA8s8yjFIyvpK9azcsBL7PXdgBcJlENNeuWtqLho6gLbCRFrhi1NJVF5siVvnVvLlnNLGeTHJoQUpGTP4TilzbbYnL2ahquch5ZXUnKmYyOyMK_-z3ey37R_Vnh3MSGzuqtnnAI0zJ71ZzZiLuwfFMzTrr19HFZ8DA',
         },
         {
             id: 3,
             name: 'Azure Heels',
-            price: '$145.00',
+            price: 3625000,
             image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCU0toqF60qeZ-Nf_eDWoTuZpJPF_SC_WTcvlrTNWPKhgzdBV7vo72tQ4ld_U93Iul3mcFDDg8vRspdh6x3sHkoLC4fm8FzKjXI-BHGsxWbgbqJaZs8i7HSqAj2vkpDS-eJLFIBCx2h3gehegpeBUsOsEyNWTfa3ovA2JP1IiYbujcC59A9aCqmbn5zgejtj-GdVafMZD7BnLRLjXHfIOcUt5OW50tU3b01fxqOR0HnzP--_gnhyar8nAGjOUpQ82ySOE3Nj6h4PsM',
         },
         {
             id: 4,
             name: 'Neon Gradient Scarf',
-            price: '$35.00',
+            price: 875000,
             image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCxJbrW_a3yyce3FLtPAqSVnEqPE48dhcWXRWhDd36fFuWEOkufsCfpUtOWlqzb1S1K19ykQfBiANI9vFMxIHBs1AXwpSIxVb6igPtZIMo69dCuhZXRgLp-iMZr2PoPLqSHyYlZIqFkIe8MqaQeFLIH8EcXG2XPKsk1-ilgC1Z3Xbh7dtd9WGK_DJczk6VWpudaI-M5qsmWjxqxzAyYNXd24xHevWosfuMMIlJiEv_1FcXayOELvUSdxyTMzsdJDxSedaW8GEkqnDY',
         },
     ];
@@ -73,10 +82,13 @@ const AccountPage = () => {
                                     </Link>
                                 ))}
                                 <div className="pt-4 mt-2 border-t border-[#4a2b4a]">
-                                    <a href="#" className="flex items-center gap-4 px-4 py-3 text-red-500 hover:text-red-400 font-medium transition-colors">
+                                    <button
+                                        onClick={handleLogout}
+                                        className="flex items-center gap-4 px-4 py-3 text-red-500 hover:text-red-400 font-medium transition-colors w-full text-left"
+                                    >
                                         <span className="material-symbols-outlined">logout</span>
                                         <span>Sign Out</span>
-                                    </a>
+                                    </button>
                                 </div>
                             </nav>
                         </div>
@@ -220,7 +232,7 @@ const AccountPage = () => {
                                             </div>
                                         </div>
                                         <h3 className="text-sm font-bold truncate">{product.name}</h3>
-                                        <p className="text-xs text-gray-500">{product.price}</p>
+                                        <p className="text-xs text-gray-500">{formatPriceVND(product.price)}</p>
                                     </Link>
                                 ))}
                             </div>

@@ -8,10 +8,10 @@ const Footer = () => {
                     <div>
                         <h5 className="text-white font-bold mb-4">Shop</h5>
                         <ul className="space-y-2">
-                            <li><Link to="/collections" className="text-gray-400 hover:text-[#d411d4] text-sm transition-colors">New Arrivals</Link></li>
-                            <li><Link to="/collections" className="text-gray-400 hover:text-[#d411d4] text-sm transition-colors">Best Sellers</Link></li>
-                            <li><Link to="/collections" className="text-gray-400 hover:text-[#d411d4] text-sm transition-colors">Accessories</Link></li>
-                            <li><Link to="/collections" className="text-gray-400 hover:text-[#d411d4] text-sm transition-colors">Sale</Link></li>
+                            <li><Link to="/" className="text-gray-400 hover:text-[#d411d4] text-sm transition-colors">New Arrivals</Link></li>
+                            <li><Link to="/" className="text-gray-400 hover:text-[#d411d4] text-sm transition-colors">Best Sellers</Link></li>
+                            <li><Link to="/" className="text-gray-400 hover:text-[#d411d4] text-sm transition-colors">Accessories</Link></li>
+                            <li><Link to="/" className="text-gray-400 hover:text-[#d411d4] text-sm transition-colors">Sale</Link></li>
                         </ul>
                     </div>
                     <div>

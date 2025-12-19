@@ -3,6 +3,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_session
+from app.deps import get_current_user
 from app.models.user import User
 from app.schemas.user import UserCreate, UserRead
 from app.utils.security import hash_password
@@ -23,12 +24,17 @@ async def create_user(payload: UserCreate, session: AsyncSession = Depends(get_s
         phone=payload.phone,
         gender=payload.gender,
         dob=payload.dob,
-        role=payload.role,
+        role="customer",  # Force customer role for public registration
     )
     session.add(user)
     await session.commit()
     await session.refresh(user)
     return user
+
+
+@router.get("/me", response_model=UserRead)
+async def read_users_me(current_user: User = Depends(get_current_user)) -> UserRead:
+    return current_user
 
 
 @router.get("/{user_id}", response_model=UserRead)

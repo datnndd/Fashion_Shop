@@ -21,13 +21,11 @@ class CartItem(Base):
     cart_item_id: Mapped[int] = mapped_column(Integer, primary_key=True)
     cart_id: Mapped[int] = mapped_column(ForeignKey("carts.cart_id"))
     product_variant_id: Mapped[int | None] = mapped_column(ForeignKey("product_variants.variant_id"), nullable=True)
-    design_id: Mapped[int | None] = mapped_column(ForeignKey("user_designs.design_id"), nullable=True)
     quantity: Mapped[int] = mapped_column(Integer, default=1)
     created_at: Mapped[DateTime] = mapped_column(DateTime, server_default=func.now())
 
     cart = relationship("Cart", back_populates="items")
     product_variant = relationship("ProductVariant", back_populates="cart_items")
-    design = relationship("UserDesign", back_populates="cart_items")
 
 
 class Order(Base):
@@ -68,11 +66,9 @@ class OrderItem(Base):
     order_item_id: Mapped[int] = mapped_column(Integer, primary_key=True)
     order_id: Mapped[int] = mapped_column(ForeignKey("orders.order_id"))
     product_variant_id: Mapped[int | None] = mapped_column(ForeignKey("product_variants.variant_id"), nullable=True)
-    design_id: Mapped[int | None] = mapped_column(ForeignKey("user_designs.design_id"), nullable=True)
 
     product_name: Mapped[str] = mapped_column(String(255))
     variant_attributes_snapshot: Mapped[dict | None] = mapped_column(JSON, nullable=True)
-    design_preview_snapshot: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     quantity: Mapped[int] = mapped_column(Integer)
     unit_price: Mapped[Numeric] = mapped_column(Numeric(15, 2))
@@ -80,4 +76,3 @@ class OrderItem(Base):
 
     order = relationship("Order", back_populates="items")
     product_variant = relationship("ProductVariant", back_populates="order_items")
-    design = relationship("UserDesign", back_populates="order_items")

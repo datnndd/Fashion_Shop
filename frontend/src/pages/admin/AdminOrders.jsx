@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { formatPriceVND } from '../../utils/currency';
 
 const AdminOrders = () => {
     const [selectedStatus, setSelectedStatus] = useState('');
@@ -6,12 +7,12 @@ const AdminOrders = () => {
 
     // Mock orders data
     const orders = [
-        { id: 'ORD-001', customer: 'Sarah M.', email: 'sarah@email.com', items: 3, total: '$245.00', status: 'Processing', date: 'Dec 16, 2024', address: '123 Main St, New York, NY 10001' },
-        { id: 'ORD-002', customer: 'James K.', email: 'james@email.com', items: 1, total: '$120.00', status: 'Shipped', date: 'Dec 16, 2024', address: '456 Oak Ave, Los Angeles, CA 90001' },
-        { id: 'ORD-003', customer: 'Emily R.', email: 'emily@email.com', items: 2, total: '$89.00', status: 'Delivered', date: 'Dec 15, 2024', address: '789 Pine Blvd, Chicago, IL 60601' },
-        { id: 'ORD-004', customer: 'Marcus T.', email: 'marcus@email.com', items: 4, total: '$312.00', status: 'Pending', date: 'Dec 15, 2024', address: '321 Elm St, Miami, FL 33101' },
-        { id: 'ORD-005', customer: 'Alex P.', email: 'alex@email.com', items: 1, total: '$55.00', status: 'Delivered', date: 'Dec 14, 2024', address: '654 Cedar Ln, Seattle, WA 98101' },
-        { id: 'ORD-006', customer: 'Lisa W.', email: 'lisa@email.com', items: 2, total: '$175.00', status: 'Cancelled', date: 'Dec 14, 2024', address: '987 Birch Dr, Austin, TX 78701' },
+        { id: 'ORD-001', customer: 'Sarah M.', email: 'sarah@email.com', items: 3, total: 6125000, status: 'Processing', date: 'Dec 16, 2024', address: '123 Main St, New York, NY 10001' },
+        { id: 'ORD-002', customer: 'James K.', email: 'james@email.com', items: 1, total: 3000000, status: 'Shipped', date: 'Dec 16, 2024', address: '456 Oak Ave, Los Angeles, CA 90001' },
+        { id: 'ORD-003', customer: 'Emily R.', email: 'emily@email.com', items: 2, total: 2225000, status: 'Delivered', date: 'Dec 15, 2024', address: '789 Pine Blvd, Chicago, IL 60601' },
+        { id: 'ORD-004', customer: 'Marcus T.', email: 'marcus@email.com', items: 4, total: 7800000, status: 'Pending', date: 'Dec 15, 2024', address: '321 Elm St, Miami, FL 33101' },
+        { id: 'ORD-005', customer: 'Alex P.', email: 'alex@email.com', items: 1, total: 1375000, status: 'Delivered', date: 'Dec 14, 2024', address: '654 Cedar Ln, Seattle, WA 98101' },
+        { id: 'ORD-006', customer: 'Lisa W.', email: 'lisa@email.com', items: 2, total: 4375000, status: 'Cancelled', date: 'Dec 14, 2024', address: '987 Birch Dr, Austin, TX 78701' },
     ];
 
     const statusColors = {
@@ -47,8 +48,8 @@ const AdminOrders = () => {
                         key={status}
                         onClick={() => setSelectedStatus(status)}
                         className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${selectedStatus === status
-                                ? 'bg-[#d411d4] text-white'
-                                : 'bg-white/5 text-gray-400 hover:text-white hover:bg-white/10'
+                            ? 'bg-[#d411d4] text-white'
+                            : 'bg-white/5 text-gray-400 hover:text-white hover:bg-white/10'
                             }`}
                     >
                         {status || 'All Orders'}
@@ -82,7 +83,7 @@ const AdminOrders = () => {
                                         </div>
                                     </td>
                                     <td className="px-6 py-4 text-gray-400">{order.items}</td>
-                                    <td className="px-6 py-4 font-medium">{order.total}</td>
+                                    <td className="px-6 py-4 font-medium">{formatPriceVND(order.total)}</td>
                                     <td className="px-6 py-4">
                                         <span className={`px-2 py-1 rounded text-xs font-medium ${statusColors[order.status]}`}>
                                             {order.status}
@@ -158,7 +159,7 @@ const AdminOrders = () => {
                                                 <p className="font-medium">Product Item {i + 1}</p>
                                                 <p className="text-sm text-gray-400">Size: M / Color: Pink</p>
                                             </div>
-                                            <p className="font-medium">${(parseFloat(selectedOrder.total.replace('$', '')) / selectedOrder.items).toFixed(2)}</p>
+                                            <p className="font-medium">{formatPriceVND(selectedOrder.total / selectedOrder.items)}</p>
                                         </div>
                                     ))}
                                 </div>
@@ -167,7 +168,7 @@ const AdminOrders = () => {
                             {/* Total */}
                             <div className="flex items-center justify-between pt-4 border-t border-white/5">
                                 <span className="font-medium">Total</span>
-                                <span className="text-xl font-bold">{selectedOrder.total}</span>
+                                <span className="text-xl font-bold">{formatPriceVND(selectedOrder.total)}</span>
                             </div>
                         </div>
                         <div className="p-6 border-t border-white/5 flex justify-end gap-3">

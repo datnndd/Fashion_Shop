@@ -3,7 +3,7 @@ import Header from './components/layout/Header';
 import Footer from './components/layout/Footer';
 import HomePage from './pages/HomePage';
 import AboutPage from './pages/AboutPage';
-import CollectionsPage from './pages/CollectionsPage';
+
 import ProductDetailPage from './pages/ProductDetailPage';
 import CartPage from './pages/CartPage';
 import CheckoutPage from './pages/CheckoutPage';
@@ -13,14 +13,19 @@ import AccountPage from './pages/AccountPage';
 
 // Admin pages
 import AdminLayout from './components/admin/AdminLayout';
+import ProtectedAdminRoute from './components/admin/ProtectedAdminRoute';
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminProducts from './pages/admin/AdminProducts';
-import AdminCollections from './pages/admin/AdminCollections';
+
 import AdminOrders from './pages/admin/AdminOrders';
 import AdminCustomers from './pages/admin/AdminCustomers';
 import AdminReviews from './pages/admin/AdminReviews';
 
+import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
+
 import { ThemeProvider, useTheme } from './context/ThemeContext';
+import { AuthProvider } from './context/AuthContext';
 
 const AppContent = () => {
   const { theme } = useTheme();
@@ -62,24 +67,7 @@ const AppContent = () => {
             </>
           }
         />
-        <Route
-          path="/collections"
-          element={
-            <>
-              <Header />
-              <CollectionsPage />
-            </>
-          }
-        />
-        <Route
-          path="/collections/:category"
-          element={
-            <>
-              <Header />
-              <CollectionsPage />
-            </>
-          }
-        />
+
         <Route
           path="/product/:id"
           element={
@@ -142,11 +130,32 @@ const AppContent = () => {
           }
         />
 
-        {/* Admin Routes */}
-        <Route path="/admin" element={<AdminLayout />}>
+        <Route
+          path="/login"
+          element={
+            <>
+              <Header />
+              <LoginPage />
+              <Footer />
+            </>
+          }
+        />
+        <Route
+          path="/register"
+          element={
+            <>
+              <Header />
+              <RegisterPage />
+              <Footer />
+            </>
+          }
+        />
+
+        {/* Admin Routes - Protected */}
+        <Route path="/admin" element={<ProtectedAdminRoute><AdminLayout /></ProtectedAdminRoute>}>
           <Route index element={<AdminDashboard />} />
           <Route path="products" element={<AdminProducts />} />
-          <Route path="collections" element={<AdminCollections />} />
+
           <Route path="orders" element={<AdminOrders />} />
           <Route path="customers" element={<AdminCustomers />} />
           <Route path="reviews" element={<AdminReviews />} />
@@ -160,7 +169,9 @@ function App() {
   return (
     <Router>
       <ThemeProvider>
-        <AppContent />
+        <AuthProvider>
+          <AppContent />
+        </AuthProvider>
       </ThemeProvider>
     </Router>
   );

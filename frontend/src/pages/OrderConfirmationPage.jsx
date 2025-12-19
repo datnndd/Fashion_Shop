@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { formatPriceVND } from '../utils/currency';
 
 const OrderConfirmationPage = () => {
     return (
@@ -24,7 +25,7 @@ const OrderConfirmationPage = () => {
                                 </div>
                                 <div className="flex flex-wrap justify-center gap-4 mt-4">
                                     <Link
-                                        to="/collections"
+                                        to="/"
                                         className="bg-[#d411d4] hover:bg-[#d411d4]/90 text-white font-bold py-3 px-8 rounded-lg shadow-lg shadow-[#d411d4]/25 transition-all flex items-center gap-2"
                                     >
                                         <span>Continue Shopping</span>
@@ -168,7 +169,7 @@ const OrderConfirmationPage = () => {
                                                     </td>
                                                     <td className="px-6 py-4 text-center font-medium">L</td>
                                                     <td className="px-6 py-4 text-center">1</td>
-                                                    <td className="px-6 py-4 text-right font-medium text-white">$45.00</td>
+                                                    <td className="px-6 py-4 text-right font-medium text-white">{formatPriceVND(45)}</td>
                                                 </tr>
                                                 <tr className="group hover:bg-white/5 transition-colors">
                                                     <td className="px-6 py-4">
@@ -191,7 +192,7 @@ const OrderConfirmationPage = () => {
                                                     </td>
                                                     <td className="px-6 py-4 text-center font-medium">32</td>
                                                     <td className="px-6 py-4 text-center">1</td>
-                                                    <td className="px-6 py-4 text-right font-medium text-white">$85.00</td>
+                                                    <td className="px-6 py-4 text-right font-medium text-white">{formatPriceVND(85)}</td>
                                                 </tr>
                                             </tbody>
                                         </table>
@@ -200,20 +201,20 @@ const OrderConfirmationPage = () => {
                                     <div className="bg-[#2a132a] border-t border-[#482348] p-6 space-y-3">
                                         <div className="flex justify-between text-gray-300">
                                             <span>Subtotal</span>
-                                            <span className="font-medium">$130.00</span>
+                                            <span className="font-medium">{formatPriceVND(3250000)}</span>
                                         </div>
                                         <div className="flex justify-between text-gray-300">
                                             <span>Shipping (Standard)</span>
-                                            <span className="font-medium">$12.00</span>
+                                            <span className="font-medium">{formatPriceVND(300000)}</span>
                                         </div>
                                         <div className="flex justify-between text-gray-300">
                                             <span>Taxes</span>
-                                            <span className="font-medium">$10.40</span>
+                                            <span className="font-medium">{formatPriceVND(260000)}</span>
                                         </div>
                                         <div className="h-px bg-[#482348] my-2"></div>
                                         <div className="flex justify-between text-lg font-bold">
                                             <span>Total</span>
-                                            <span className="text-[#d411d4]">$152.40</span>
+                                            <span className="text-xl font-bold text-[#d411d4]">{formatPriceVND(3810000)}</span>
                                         </div>
                                     </div>
                                 </div>

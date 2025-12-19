@@ -6,7 +6,7 @@ class ProductVariantBase(BaseModel):
     attributes: dict | None = None
     price: float
     stock: int = 0
-    image_url: str | None = None
+    images: list[str] | None = None
     is_active: bool = True
 
 

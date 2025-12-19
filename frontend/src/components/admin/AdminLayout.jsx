@@ -8,7 +8,7 @@ const AdminLayout = () => {
     const navItems = [
         { path: '/admin', icon: 'dashboard', label: 'Dashboard', exact: true },
         { path: '/admin/products', icon: 'inventory_2', label: 'Products' },
-        { path: '/admin/collections', icon: 'collections', label: 'Collections' },
+
         { path: '/admin/orders', icon: 'shopping_cart', label: 'Orders' },
         { path: '/admin/customers', icon: 'group', label: 'Customers' },
         { path: '/admin/reviews', icon: 'reviews', label: 'Reviews' },
@@ -45,8 +45,8 @@ const AdminLayout = () => {
                             key={item.path}
                             to={item.path}
                             className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-all ${isActive(item)
-                                    ? 'bg-[#d411d4]/20 text-[#d411d4] border-l-2 border-[#d411d4]'
-                                    : 'text-gray-400 hover:text-white hover:bg-white/5'
+                                ? 'bg-[#d411d4]/20 text-[#d411d4] border-l-2 border-[#d411d4]'
+                                : 'text-gray-400 hover:text-white hover:bg-white/5'
                                 }`}
                         >
                             <span className="material-symbols-outlined text-[20px]">{item.icon}</span>

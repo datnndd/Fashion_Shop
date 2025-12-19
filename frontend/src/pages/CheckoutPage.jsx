@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { formatPriceVND } from '../utils/currency';
 
 const CheckoutPage = () => {
     return (
@@ -158,7 +159,7 @@ const CheckoutPage = () => {
                                             </span>
                                         </span>
                                         <span className="material-symbols-outlined text-[#d411d4] mt-0.5">check_circle</span>
-                                        <span className="ml-4 mt-0.5 text-sm font-bold">$5.00</span>
+                                        <span className="ml-4 mt-0.5 text-sm font-bold">{formatPriceVND(125000)}</span>
                                     </label>
                                     <label className="relative flex cursor-pointer rounded-lg border border-[#482348] bg-[#2d152d] p-4 shadow-sm focus:outline-none hover:border-gray-500 transition-colors">
                                         <input className="sr-only" name="delivery-method" type="radio" value="Express" />
@@ -168,7 +169,7 @@ const CheckoutPage = () => {
                                                 <span className="mt-1 flex items-center text-sm text-gray-300">1-2 business days</span>
                                             </span>
                                         </span>
-                                        <span className="ml-4 mt-0.5 text-sm font-bold">$25.00</span>
+                                        <span className="ml-4 mt-0.5 text-sm font-bold">{formatPriceVND(625000)}</span>
                                     </label>
                                 </div>
                             </section>
@@ -211,7 +212,7 @@ const CheckoutPage = () => {
                                                 <h4 className="font-bold text-sm">Oversized Noir Hoodie</h4>
                                                 <p className="text-gray-400 text-xs mt-1">Size: M / Color: Black</p>
                                             </div>
-                                            <p className="font-medium text-sm">$125.00</p>
+                                            <p className="font-medium text-sm">{formatPriceVND(3125000)}</p>
                                         </div>
                                     </div>
                                     {/* Item 2 */}
@@ -228,7 +229,7 @@ const CheckoutPage = () => {
                                                 <h4 className="font-bold text-sm">Neon Basic Tee</h4>
                                                 <p className="text-gray-400 text-xs mt-1">Size: L / Color: Hot Pink</p>
                                             </div>
-                                            <p className="font-medium text-sm">$45.00</p>
+                                            <p className="font-medium text-sm">{formatPriceVND(1125000)}</p>
                                         </div>
                                     </div>
                                 </div>
@@ -247,24 +248,24 @@ const CheckoutPage = () => {
                                 <div className="p-6 border-t border-[#482348] bg-[#221022]/30 space-y-3">
                                     <div className="flex justify-between text-sm text-gray-300">
                                         <span>Subtotal</span>
-                                        <span className="font-medium">$170.00</span>
+                                        <span className="font-medium">{formatPriceVND(4250000)}</span>
                                     </div>
                                     <div className="flex justify-between text-sm text-gray-300">
                                         <div className="flex items-center gap-1">
                                             <span>Shipping</span>
                                             <span className="material-symbols-outlined text-gray-500 text-[16px] cursor-help">help</span>
                                         </div>
-                                        <span className="font-medium">$5.00</span>
+                                        <span className="font-medium">{formatPriceVND(125000)}</span>
                                     </div>
                                     <div className="flex justify-between text-sm text-gray-300">
                                         <span>Taxes (estimated)</span>
-                                        <span className="font-medium">$14.00</span>
+                                        <span className="font-medium">{formatPriceVND(350000)}</span>
                                     </div>
                                     <div className="border-t border-[#482348] my-4 pt-4 flex justify-between items-end">
                                         <span className="text-base font-bold">Total</span>
                                         <div className="flex items-baseline gap-1">
-                                            <span className="text-xs text-gray-400">USD</span>
-                                            <span className="text-2xl font-bold text-[#d411d4] tracking-tight">$189.00</span>
+                                            <span className="text-xs text-gray-400">VND</span>
+                                            <span className="text-2xl font-bold text-[#d411d4] tracking-tight">{formatPriceVND(4725000)}</span>
                                         </div>
                                     </div>
                                 </div>

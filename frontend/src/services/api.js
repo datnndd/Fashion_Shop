@@ -9,17 +9,33 @@ const API_BASE = 'http://localhost:8000';
  * Generic fetch wrapper with error handling
  */
 async function fetchAPI(endpoint, options = {}) {
+    const headers = {
+        'Content-Type': 'application/json',
+        ...options.headers,
+    };
+
+    // If body is FormData, delete Content-Type to let browser set it with boundary
+    if (options.body instanceof FormData) {
+        delete headers['Content-Type'];
+    }
+
     const response = await fetch(`${API_BASE}${endpoint}`, {
         ...options,
-        headers: {
-            'Content-Type': 'application/json',
-            ...options.headers,
-        },
+        headers,
     });
 
+    console.log(`[API] ${endpoint} status:`, response.status);
+    console.log(`[API] ${endpoint} headers:`, [...response.headers.entries()]);
+
     if (!response.ok) {
-        const error = await response.json().catch(() => ({ detail: 'An error occurred' }));
-        throw new Error(error.detail || 'API request failed');
+        let errorData;
+        try {
+            errorData = await response.json();
+        } catch (e) {
+            errorData = { detail: response.statusText || 'An error occurred' };
+        }
+        const errorMessage = errorData.detail || JSON.stringify(errorData) || 'API request failed';
+        throw new Error(errorMessage);
     }
 
     // Handle 204 No Content
@@ -54,19 +70,39 @@ export const productsAPI = {
     get: (productId) => fetchAPI(`/catalog/products/${productId}`),
 
     /**
-     * Create a new product
+     * Create a new product (admin only)
      */
-    create: (data) => fetchAPI('/catalog/products', { method: 'POST', body: JSON.stringify(data) }),
+    create: (data) => {
+        const token = localStorage.getItem('token');
+        return fetchAPI('/catalog/products', {
+            method: 'POST',
+            body: JSON.stringify(data),
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+    },
 
     /**
-     * Update a product
+     * Update a product (admin only)
      */
-    update: (productId, data) => fetchAPI(`/catalog/products/${productId}`, { method: 'PUT', body: JSON.stringify(data) }),
+    update: (productId, data) => {
+        const token = localStorage.getItem('token');
+        return fetchAPI(`/catalog/products/${productId}`, {
+            method: 'PUT',
+            body: JSON.stringify(data),
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+    },
 
     /**
-     * Delete a product
+     * Delete a product (admin only)
      */
-    delete: (productId) => fetchAPI(`/catalog/products/${productId}`, { method: 'DELETE' }),
+    delete: (productId) => {
+        const token = localStorage.getItem('token');
+        return fetchAPI(`/catalog/products/${productId}`, {
+            method: 'DELETE',
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+    },
 
     /**
      * Get product variants
@@ -74,41 +110,7 @@ export const productsAPI = {
     getVariants: (productId) => fetchAPI(`/catalog/products/${productId}/variants`),
 };
 
-// Collections API
-export const collectionsAPI = {
-    /**
-     * Get all collections
-     */
-    list: (isActive = null) => {
-        const params = isActive !== null ? `?is_active=${isActive}` : '';
-        return fetchAPI(`/collections${params}`);
-    },
 
-    /**
-     * Get a single collection by ID
-     */
-    get: (collectionId) => fetchAPI(`/collections/${collectionId}`),
-
-    /**
-     * Create a new collection
-     */
-    create: (data) => fetchAPI('/collections', { method: 'POST', body: JSON.stringify(data) }),
-
-    /**
-     * Update a collection
-     */
-    update: (collectionId, data) => fetchAPI(`/collections/${collectionId}`, { method: 'PUT', body: JSON.stringify(data) }),
-
-    /**
-     * Delete a collection
-     */
-    delete: (collectionId) => fetchAPI(`/collections/${collectionId}`, { method: 'DELETE' }),
-
-    /**
-     * Get products in a collection
-     */
-    getProducts: (collectionId) => fetchAPI(`/collections/${collectionId}/products`),
-};
 
 // Categories API
 export const categoriesAPI = {
@@ -180,6 +182,36 @@ export const usersAPI = {
     get: (userId) => fetchAPI(`/users/${userId}`),
 };
 
+// Auth API
+export const authAPI = {
+    /**
+     * Login user
+     */
+    login: (email, password) => {
+        const formData = new FormData();
+        formData.append('username', email); // backend uses OAuth2PasswordRequestForm which expects 'username'
+        formData.append('password', password);
+        return fetchAPI('/auth/login', {
+            method: 'POST',
+            body: formData,
+            // Don't set Content-Type header, let browser set it with boundary for FormData
+            headers: {}
+        });
+    },
+
+    /**
+     * Register user
+     */
+    register: (userData) => fetchAPI('/users', { method: 'POST', body: JSON.stringify(userData) }),
+
+    /**
+     * Get current user
+     */
+    me: (token) => fetchAPI('/users/me', {
+        headers: { Authorization: `Bearer ${token}` }
+    }),
+};
+
 // Admin Stats API
 export const adminAPI = {
     /**
@@ -196,12 +228,42 @@ export const adminAPI = {
 // Export a default API object for convenience
 const api = {
     products: productsAPI,
-    collections: collectionsAPI,
+
     categories: categoriesAPI,
     reviews: reviewsAPI,
     users: usersAPI,
+    auth: authAPI,
     admin: adminAPI,
 };
+
+// Upload API
+export const uploadAPI = {
+    /**
+     * Upload multiple images
+     */
+    uploadImages: (files) => {
+        const formData = new FormData();
+        files.forEach(file => formData.append('files', file));
+        return fetchAPI('/upload/images', {
+            method: 'POST',
+            body: formData,
+            headers: {}
+        });
+    },
+
+    /**
+     * Upload single image
+     */
+    uploadImage: (file) => {
+        const formData = new FormData();
+        formData.append('file', file);
+        return fetchAPI('/upload/image', {
+            method: 'POST',
+            body: formData,
+            headers: {}
+        });
+    },
+}
 
 export default api;
 

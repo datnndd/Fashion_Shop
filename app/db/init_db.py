@@ -5,7 +5,6 @@ from app.models import (  # noqa: F401
     Cart,
     CartItem,
     Category,
-    CustomProductTemplate,
     Discount,
     Order,
     OrderItem,
@@ -15,7 +14,6 @@ from app.models import (  # noqa: F401
     Review,
     User,
     UserAddress,
-    UserDesign,
     Ward,
 )
 

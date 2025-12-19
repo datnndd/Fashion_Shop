@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { formatPriceVND } from '../utils/currency';
 import { useState } from 'react';
 
 const CartPage = () => {
@@ -9,7 +10,7 @@ const CartPage = () => {
             color: 'Electric Blue',
             colorValue: '#3b82f6',
             size: 'M',
-            price: 45.00,
+            price: 1125000,
             quantity: 1,
             image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBUjrennFv4rJGr95yeQpRR1TwtUBw5IgY8rKL-wAtAhJWBhlPfd_y0HPfVq-6Gwk0aqgOIas2zxZzVkSRnLUl-4gQcXVqghbk8_tDquvL2UKGaV9PUaPyX88hKX6XKl2hf3X3GZgthxJONxdf5Z7dpgc_UzgDhY8G_IqKqoidQxcnuRKKcXw2Y3V68ejdbZa-7wrtYvPHFzVVnnRxTAv3e6obIJmeHpH29uEilolfXsK5OGf4Va46xbhMvIItCgg5sVRTFbYU6sdc',
         },
@@ -29,7 +30,7 @@ const CartPage = () => {
             color: 'Deep Violet',
             colorValue: '#9333ea',
             size: 'L',
-            price: 85.00,
+            price: 2125000,
             quantity: 1,
             image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDHtSr0Y3y06xJEnISbAzupPXf0mclqb6_zwx7MxFpLcmX35Tkd50F2QEFkS9jyczZvEwsiGRj3WILWr-Aa1FSVvuvJ7kX0sc-DO9EHJO183DaUesCbJSqjK4MZY3OBhRWLrbVH2RSdGIJgFyiN7l-gO3H2BpEj01qfgwFrI8RoBeP3dYdbFDgcHzo1ZTsLPiAK1fW0p8VBdcixJrP4li1-gA_nn3uUxRXgUjKyGmlqy8wEqsnu2L7bI2UFmcZwGCH0nDWG_Z4z-cQ',
         },
@@ -39,25 +40,25 @@ const CartPage = () => {
         {
             id: 4,
             name: 'Ribbed Long Sleeve',
-            price: '$55.00',
+            price: 1375000,
             image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDcrakDjwySS2NcyUEZGEn_qay61wwEJsUs8RSMa5wI94pGdYYqaIuxSwJSU-SLo-vu07Yli6dNfWBktTffW9gmlzUi4TMDqxrfyo3YxwLwkMScJSBylO9YSAsuZyqUYUdGN5K3MoH3qFYlHQ77T2250DyQyvgAW5fMIowfcTwQcpdyNAQR7HCjRkBusbfNM8O4hY94Cj89yJdzMXsjY5z3yZbxs4AHeblThhw0wKuxbqP9LuWOab_lWX2eDIhDZAYVxKglhhtgmMA',
         },
         {
             id: 5,
             name: 'Basic Cap',
-            price: '$25.00',
+            price: 625000,
             image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAq5Zy9tSAPgAt-jhA9xiZPz_BNBcdTHFvF_PQUPmMd4sLdwHqD98IryyuAnNvJ33hTSHa90PU-rLKMfELfJ5LpaVCXCZwaW36lUCNoIAPMXy244vKs9r569TsJxjQrNyXdqXzIJSbJCtIf0Fdjx4X24cxYh8-Z9VDP_013VC6e5-lXSb515mDSh_4vjpCayj8wX2Fw165Imcho9Q9zU2FI1b-Hz8wgXcxDVy_mSNwBXc84aZbrpynKBrBc86tmgjW6w6S3pihwMfw',
         },
         {
             id: 6,
             name: 'Heavy Cotton Tee',
-            price: '$35.00',
+            price: 875000,
             image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuABUP7no3eTgrJ3Q2UvgM-wdg-eSFIprnEb_xtnQGFO7Lr18sy_hlRROWYVqr_p6Qr1YPUsBJWIR9lyB1gbdKoqBLB7W0OD5AHms7GSISgs2cLTvLMutTPNeA3g4JkbqF2fgfObXw7X_4-N6tmIo8mSRk45gaJbdRPLKjqWmr6AsEqbF6G_i8lIuoCvLSok2OmbL6bDKX7POKrHxRgpYfc33QgRN99yt1pCtjwNln1TQ9hZazs5Q-TqSwux0Dk6spDMH6MKNviJhWc',
         },
         {
             id: 7,
             name: 'Oversized Hoodie',
-            price: '$95.00',
+            price: 2375000,
             image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCUkyJPJGa1A3TxxNJZCbAtQ1jgRhx7Pgm7Wer3bVQkrwVvLpsl21nHLKZqhTwdTNfSvlaFMvP6Q-gPAFdSJgaFubuK_Qr8vJ6liY-T991fGmRcublvIIOTh1vYyNMsyOt4xw_x9Rjf80us2KB9OfZcfhCQaIqq4qV3MQJ4z0jv64zVZSQyRwpqSCXA5oS1hQTs3BoMIngpFavbX_btJWfBKEuN6Vn1img7IdZQ_7fpYOEpHLB7O2rSzkV8RGqnpuFaEN6H3v47R2E',
         },
     ];
@@ -120,7 +121,7 @@ const CartPage = () => {
                                                             <span>{item.color}</span>
                                                         </div>
                                                         <span className="text-sm text-[#c992c9] mt-1">Size: {item.size}</span>
-                                                        <span className="md:hidden font-bold mt-2">${item.price.toFixed(2)}</span>
+                                                        <span className="md:hidden font-bold mt-2">{formatPriceVND(item.price)}</span>
                                                     </div>
                                                 </div>
                                             </td>
@@ -144,7 +145,7 @@ const CartPage = () => {
                                                 </div>
                                             </td>
                                             <td className="px-6 py-6 text-right">
-                                                <span className="font-bold text-lg tracking-tight">${(item.price * item.quantity).toFixed(2)}</span>
+                                                <span className="font-bold text-lg tracking-tight">{formatPriceVND(item.price * item.quantity)}</span>
                                             </td>
                                             <td className="px-4 py-6 text-right">
                                                 <button
@@ -160,7 +161,7 @@ const CartPage = () => {
                             </table>
                         </div>
                         <div className="mt-8">
-                            <Link to="/collections" className="inline-flex items-center gap-2 text-[#d411d4] font-bold hover:text-white transition-colors">
+                            <Link to="/" className="inline-flex items-center gap-2 text-[#d411d4] font-bold hover:text-white transition-colors">
                                 <span className="material-symbols-outlined">arrow_back</span>
                                 Continue Shopping
                             </Link>
@@ -175,7 +176,7 @@ const CartPage = () => {
                             <div className="flex flex-col gap-4 border-b border-[#482348] pb-6">
                                 <div className="flex justify-between items-center">
                                     <p className="text-[#c992c9]">Subtotal</p>
-                                    <p className="font-medium">${subtotal.toFixed(2)}</p>
+                                    <p className="font-medium">{formatPriceVND(subtotal)}</p>
                                 </div>
                                 <div className="flex justify-between items-center">
                                     <p className="text-[#c992c9]">Shipping Estimate</p>
@@ -183,7 +184,7 @@ const CartPage = () => {
                                 </div>
                                 <div className="flex justify-between items-center">
                                     <p className="text-[#c992c9]">Tax</p>
-                                    <p className="font-medium">$0.00</p>
+                                    <p className="font-medium">{formatPriceVND(0)}</p>
                                 </div>
                             </div>
                             {/* Promo Code */}
@@ -203,7 +204,7 @@ const CartPage = () => {
                             <div className="flex justify-between items-end border-t border-[#482348] pt-6 mt-2">
                                 <p className="text-lg font-bold">Total</p>
                                 <div className="text-right">
-                                    <p className="text-3xl font-black tracking-tight leading-none">${subtotal.toFixed(2)}</p>
+                                    <p className="text-3xl font-black tracking-tight leading-none">{formatPriceVND(subtotal)}</p>
                                     <p className="text-xs text-[#c992c9] mt-1">Including VAT</p>
                                 </div>
                             </div>
@@ -240,7 +241,7 @@ const CartPage = () => {
                                     </div>
                                 </div>
                                 <h4 className="font-bold text-sm">{item.name}</h4>
-                                <p className="text-[#c992c9] text-xs mt-1">{item.price}</p>
+                                <p className="text-[#c992c9] text-xs mt-1">{formatPriceVND(item.price)}</p>
                             </Link>
                         ))}
                     </div>

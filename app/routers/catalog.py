@@ -1,11 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_session
+from app.deps import get_admin_user
 from app.models.catalog import Category, Product, ProductVariant
+from app.models.user import User
 from app.schemas.category import CategoryCreate, CategoryRead
-from app.schemas.product import ProductCreate, ProductRead
+from app.schemas.product import ProductCreate, ProductCreateWithVariants, ProductRead, ProductReadWithDetails
 from app.schemas.variant import ProductVariantCreate, ProductVariantRead
 
 router = APIRouter(prefix="/catalog", tags=["catalog"])
@@ -38,12 +41,18 @@ async def list_categories(
     return list(result.all())
 
 
-@router.post("/products", response_model=ProductRead, status_code=status.HTTP_201_CREATED)
-async def create_product(payload: ProductCreate, session: AsyncSession = Depends(get_session)) -> ProductRead:
+@router.post("/products", response_model=ProductReadWithDetails, status_code=status.HTTP_201_CREATED)
+async def create_product(
+    payload: ProductCreateWithVariants,
+    session: AsyncSession = Depends(get_session),
+    admin: User = Depends(get_admin_user),  # Require admin role
+) -> ProductReadWithDetails:
+    """Create a new product with optional variants. Requires admin role."""
     category = await session.get(Category, payload.category_id)
     if not category:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Category not found")
 
+    # Create product
     product = Product(
         category_id=payload.category_id,
         name=payload.name,
@@ -51,11 +60,30 @@ async def create_product(payload: ProductCreate, session: AsyncSession = Depends
         description=payload.description,
         base_price=payload.base_price,
         thumbnail=payload.thumbnail,
+        is_new=payload.is_new,
+        discount_percent=payload.discount_percent,
+        badge=payload.badge,
+        images=payload.images,
         is_published=payload.is_published,
     )
     session.add(product)
+    await session.flush()  # Get product_id without committing
+
+    # Create variants
+    for variant_data in payload.variants:
+        variant = ProductVariant(
+            product_id=product.product_id,
+            sku=variant_data.sku,
+            attributes=variant_data.attributes,
+            price=variant_data.price,
+            stock=variant_data.stock,
+            images=variant_data.images,
+            is_active=variant_data.is_active,
+        )
+        session.add(variant)
+
     await session.commit()
-    await session.refresh(product)
+    await session.refresh(product, ["variants", "category"])
     return product
 
 
@@ -65,7 +93,10 @@ async def get_product(
     session: AsyncSession = Depends(get_session),
 ) -> ProductRead:
     """Get a single product by ID."""
-    product = await session.get(Product, product_id)
+    query = select(Product).options(selectinload(Product.variants)).where(Product.product_id == product_id)
+    result = await session.scalars(query)
+    product = result.one_or_none()
+    
     if not product:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
     return product
@@ -105,6 +136,8 @@ async def list_products(
         query = query.order_by(Product.created_at.desc())  # Default to newest
     
     query = query.offset(offset).limit(limit)
+    # Eager load variants to populate the colors property
+    query = query.options(selectinload(Product.variants))
     result = await session.scalars(query)
     return list(result.all())
 
@@ -129,7 +162,7 @@ async def create_variant(
         attributes=payload.attributes,
         price=payload.price,
         stock=payload.stock,
-        image_url=payload.image_url,
+        images=payload.images,
         is_active=payload.is_active,
     )
     session.add(variant)

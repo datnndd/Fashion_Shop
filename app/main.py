@@ -1,12 +1,14 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from app.core.config import settings
 from app.db.init_db import init_models
 from app.db.session import engine
-from app.routers import admin, catalog, collections, health, location, reviews, users
+from app.routers import admin, auth, catalog, health, location, reviews, upload, users
 
 
 @asynccontextmanager
@@ -26,11 +28,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Mount static files for uploads
+uploads_dir = Path("uploads")
+uploads_dir.mkdir(exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=str(uploads_dir)), name="uploads")
+
 app.include_router(health.router)
 app.include_router(users.router)
+app.include_router(auth.router)
 app.include_router(catalog.router)
-app.include_router(collections.router)
 app.include_router(reviews.router)
 app.include_router(location.router)
 app.include_router(admin.router)
-
+app.include_router(upload.router)

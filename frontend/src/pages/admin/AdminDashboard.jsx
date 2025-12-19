@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
+import { formatPriceVND } from '../../utils/currency';
 import { Link } from 'react-router-dom';
-import { productsAPI, collectionsAPI, usersAPI } from '../../services/api';
+import { productsAPI, categoriesAPI, usersAPI } from '../../services/api';
 
 const AdminDashboard = () => {
     const [loading, setLoading] = useState(true);
     const [stats, setStats] = useState({
         products: 0,
-        collections: 0,
+        categories: 0,
         customers: 0
     });
     const [topProducts, setTopProducts] = useState([]);
@@ -15,14 +16,14 @@ const AdminDashboard = () => {
         const fetchData = async () => {
             try {
                 setLoading(true);
-                const [products, collections] = await Promise.all([
+                const [products, categories] = await Promise.all([
                     productsAPI.list({ limit: 100 }),
-                    collectionsAPI.list()
+                    categoriesAPI.list()
                 ]);
 
                 setStats({
                     products: products.length,
-                    collections: collections.length,
+                    categories: categories.length,
                     customers: 0 // Will be fetched when users API is ready
                 });
 
@@ -39,18 +40,18 @@ const AdminDashboard = () => {
 
     // Stats cards data
     const statsCards = [
-        { label: 'Total Revenue', value: '$24,560', change: '+12.5%', positive: true, icon: 'payments' },
+        { label: 'Total Revenue', value: formatPriceVND(614000000), change: '+12.5%', positive: true, icon: 'payments' },
         { label: 'Orders', value: '156', change: '+8.2%', positive: true, icon: 'shopping_bag' },
         { label: 'Products', value: stats.products.toString(), change: `${stats.products}`, positive: true, icon: 'inventory_2' },
-        { label: 'Collections', value: stats.collections.toString(), change: `${stats.collections}`, positive: true, icon: 'collections' },
+        { label: 'Categories', value: (stats.categories || 0).toString(), change: `${stats.categories || 0}`, positive: true, icon: 'category' },
     ];
 
     // Mock recent orders (will be replaced with API data later)
     const recentOrders = [
-        { id: 'ORD-001', customer: 'Sarah M.', items: 3, total: '$245.00', status: 'Processing', date: 'Dec 16, 2024' },
-        { id: 'ORD-002', customer: 'James K.', items: 1, total: '$120.00', status: 'Shipped', date: 'Dec 16, 2024' },
-        { id: 'ORD-003', customer: 'Emily R.', items: 2, total: '$89.00', status: 'Delivered', date: 'Dec 15, 2024' },
-        { id: 'ORD-004', customer: 'Marcus T.', items: 4, total: '$312.00', status: 'Pending', date: 'Dec 15, 2024' },
+        { id: 'ORD-001', customer: 'Sarah M.', items: 3, total: 6125000, status: 'Processing', date: 'Dec 16, 2024' },
+        { id: 'ORD-002', customer: 'James K.', items: 1, total: 3000000, status: 'Shipped', date: 'Dec 16, 2024' },
+        { id: 'ORD-003', customer: 'Emily R.', items: 2, total: 2225000, status: 'Delivered', date: 'Dec 15, 2024' },
+        { id: 'ORD-004', customer: 'Marcus T.', items: 4, total: 7800000, status: 'Pending', date: 'Dec 15, 2024' },
     ];
 
     const statusColors = {
@@ -127,7 +128,7 @@ const AdminDashboard = () => {
                                         <td className="px-6 py-4 font-medium">{order.id}</td>
                                         <td className="px-6 py-4 text-gray-300">{order.customer}</td>
                                         <td className="px-6 py-4 text-gray-400">{order.items}</td>
-                                        <td className="px-6 py-4 font-medium">{order.total}</td>
+                                        <td className="px-6 py-4 font-medium">{formatPriceVND(order.total)}</td>
                                         <td className="px-6 py-4">
                                             <span className={`px-2 py-1 rounded text-xs font-medium ${statusColors[order.status]}`}>
                                                 {order.status}
@@ -151,10 +152,7 @@ const AdminDashboard = () => {
                                 <span className="material-symbols-outlined text-[#d411d4]">add_circle</span>
                                 <span className="text-sm">Add Product</span>
                             </Link>
-                            <Link to="/admin/collections" className="flex flex-col items-center gap-2 p-4 bg-white/5 hover:bg-white/10 rounded-lg transition-colors">
-                                <span className="material-symbols-outlined text-[#d411d4]">palette</span>
-                                <span className="text-sm">New Collection</span>
-                            </Link>
+
                             <Link to="/admin/orders" className="flex flex-col items-center gap-2 p-4 bg-white/5 hover:bg-white/10 rounded-lg transition-colors">
                                 <span className="material-symbols-outlined text-[#d411d4]">local_shipping</span>
                                 <span className="text-sm">View Orders</span>
@@ -178,7 +176,7 @@ const AdminDashboard = () => {
                                         <p className="font-medium text-sm">{product.name}</p>
                                         <p className="text-xs text-gray-400">In stock</p>
                                     </div>
-                                    <span className="text-sm font-medium">${product.base_price}</span>
+                                    <span className="text-sm font-medium">{formatPriceVND(product.base_price)}</span>
                                 </div>
                             )) : (
                                 <p className="text-gray-400 text-sm">No products yet</p>

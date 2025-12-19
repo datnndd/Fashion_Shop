@@ -29,12 +29,11 @@ class Product(Base):
     base_price: Mapped[Numeric] = mapped_column(Numeric(15, 2))
     thumbnail: Mapped[str | None] = mapped_column(String(500), nullable=True)
     
-    # New fields for frontend
+    # Discount and flags
     is_new: Mapped[bool] = mapped_column(Boolean, default=False)
-    is_sale: Mapped[bool] = mapped_column(Boolean, default=False)
-    original_price: Mapped[Numeric | None] = mapped_column(Numeric(15, 2), nullable=True)
-    badge: Mapped[str | None] = mapped_column(String(50), nullable=True)  # "Best Seller", "New", etc.
-    images: Mapped[list | None] = mapped_column(JSON, nullable=True)  # Array of image URLs
+    discount_percent: Mapped[int] = mapped_column(Integer, default=0)  # 0-100
+    badge: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    images: Mapped[list | None] = mapped_column(JSON, nullable=True)
     
     is_published: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[DateTime] = mapped_column(DateTime, server_default=func.now())
@@ -44,6 +43,29 @@ class Product(Base):
     category = relationship("Category", back_populates="products")
     variants = relationship("ProductVariant", back_populates="product")
     reviews = relationship("Review", back_populates="product")
+
+    @property
+    def is_sale(self) -> bool:
+        """Product is on sale if discount_percent > 0."""
+        return self.discount_percent > 0
+
+    @property
+    def sale_price(self) -> float | None:
+        """Calculate discounted price. Returns None if no discount."""
+        if self.discount_percent > 0:
+            return float(self.base_price) * (1 - self.discount_percent / 100)
+        return None
+
+    @property
+    def colors(self) -> list[str]:
+        if not self.variants:
+            return []
+        # Extract unique hex colors
+        unique_colors = set()
+        for v in self.variants:
+            if v.attributes and "color" in v.attributes:
+                unique_colors.add(v.attributes["color"])
+        return list(unique_colors)
 
 
 class ProductVariant(Base):
@@ -55,7 +77,7 @@ class ProductVariant(Base):
     attributes: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     price: Mapped[Numeric] = mapped_column(Numeric(15, 2))
     stock: Mapped[int] = mapped_column(Integer, default=0)
-    image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    images: Mapped[list | None] = mapped_column(JSON, nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
     product = relationship("Product", back_populates="variants")
