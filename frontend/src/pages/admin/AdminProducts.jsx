@@ -190,6 +190,32 @@ const AdminProducts = () => {
         });
     };
 
+    // Thumbnail upload handler
+    const [thumbnailUploading, setThumbnailUploading] = useState(false);
+
+    const handleThumbnailUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        setThumbnailUploading(true);
+        try {
+            const result = await uploadAPI.uploadImage(file);
+            setFormData(prev => ({
+                ...prev,
+                thumbnail: result.url
+            }));
+        } catch (err) {
+            console.error('Thumbnail upload failed:', err);
+            setError(`Thumbnail upload failed: ${err.message}`);
+        } finally {
+            setThumbnailUploading(false);
+        }
+    };
+
+    const removeThumbnail = () => {
+        setFormData(prev => ({ ...prev, thumbnail: '' }));
+    };
+
     const generateSku = (index) => {
         const variant = formData.variants[index];
         const productSlug = formData.slug || generateSlug(formData.name);
@@ -256,6 +282,23 @@ const AdminProducts = () => {
             setError(err.message || 'Failed to save product');
         } finally {
             setSaving(false);
+        }
+    };
+
+    // Delete product
+    const handleDelete = async (product) => {
+        if (!window.confirm(`Are you sure you want to delete "${product.name}"?`)) {
+            return;
+        }
+
+        try {
+            await productsAPI.delete(product.product_id);
+            await fetchData();
+        } catch (err) {
+            console.error('Failed to delete product:', err);
+            setError(err.message || 'Failed to delete product');
+            // Scroll to top to show error
+            window.scrollTo(0, 0);
         }
     };
 
@@ -366,7 +409,10 @@ const AdminProducts = () => {
                                                 >
                                                     <span className="material-symbols-outlined text-[18px]">edit</span>
                                                 </button>
-                                                <button className="p-2 hover:bg-red-500/20 rounded-lg transition-colors text-gray-400 hover:text-red-400">
+                                                <button
+                                                    onClick={() => handleDelete(product)}
+                                                    className="p-2 hover:bg-red-500/20 rounded-lg transition-colors text-gray-400 hover:text-red-400"
+                                                >
                                                     <span className="material-symbols-outlined text-[18px]">delete</span>
                                                 </button>
                                             </div>
@@ -506,15 +552,44 @@ const AdminProducts = () => {
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium mb-2">Thumbnail URL</label>
-                                    <input
-                                        type="text"
-                                        name="thumbnail"
-                                        value={formData.thumbnail}
-                                        onChange={handleInputChange}
-                                        className="w-full bg-white/5 rounded-lg px-4 py-3 text-sm border border-white/10 focus:border-[#d411d4] outline-none"
-                                        placeholder="https://..."
-                                    />
+                                    <label className="block text-sm font-medium mb-2">Thumbnail Image</label>
+                                    <div className="space-y-3">
+                                        {formData.thumbnail ? (
+                                            <div className="relative w-32 h-32 group">
+                                                <img
+                                                    src={formData.thumbnail.startsWith('http') ? formData.thumbnail : `${API_BASE}${formData.thumbnail}`}
+                                                    alt="Thumbnail preview"
+                                                    className="w-full h-full object-cover rounded-lg border border-white/10"
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={removeThumbnail}
+                                                    className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-white text-sm opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                                                >
+                                                    ×
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <div className="w-full">
+                                                <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-white/20 rounded-lg cursor-pointer hover:bg-white/5 transition-colors">
+                                                    <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                                                        <span className="material-symbols-outlined text-3xl text-gray-400 mb-2">cloud_upload</span>
+                                                        <p className="text-sm text-gray-400">
+                                                            {thumbnailUploading ? 'Uploading...' : 'Click to upload thumbnail'}
+                                                        </p>
+                                                    </div>
+                                                    <input
+                                                        type="file"
+                                                        className="hidden"
+                                                        accept="image/*"
+                                                        onChange={handleThumbnailUpload}
+                                                        disabled={thumbnailUploading}
+                                                    />
+                                                </label>
+                                            </div>
+                                        )}
+                                        {/* Hidden input to store URL if needed for form submission logic, though state handles it */}
+                                    </div>
                                 </div>
 
                                 <div className="flex flex-wrap gap-4">

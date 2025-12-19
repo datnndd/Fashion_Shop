@@ -27,6 +27,22 @@ class ProductCreateWithVariants(ProductBase):
     variants: list["ProductVariantCreate"] = []
 
 
+class ProductUpdate(BaseModel):
+    """Schema for updating a product."""
+    category_id: int | None = None
+    name: str | None = None
+    slug: str | None = None
+    description: str | None = None
+    base_price: float | None = None
+    thumbnail: str | None = None
+    is_new: bool | None = None
+    discount_percent: int | None = None
+    badge: str | None = None
+    images: list[str] | None = None
+    is_published: bool | None = None
+
+
+
 # Import here to avoid circular imports
 from app.schemas.variant import ProductVariantCreate
 ProductCreateWithVariants.model_rebuild()

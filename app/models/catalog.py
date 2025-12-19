@@ -41,7 +41,7 @@ class Product(Base):
     deleted_at: Mapped[DateTime | None] = mapped_column(DateTime, nullable=True)
 
     category = relationship("Category", back_populates="products")
-    variants = relationship("ProductVariant", back_populates="product")
+    variants = relationship("ProductVariant", back_populates="product", cascade="all, delete-orphan")
     reviews = relationship("Review", back_populates="product")
 
     @property

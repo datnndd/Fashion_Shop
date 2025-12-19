@@ -212,6 +212,23 @@ export const authAPI = {
     }),
 };
 
+// Orders API (for admin)
+export const ordersAPI = {
+    list: (params = {}) => {
+        const searchParams = new URLSearchParams();
+        if (params.status) searchParams.append('status', params.status);
+        if (params.limit) searchParams.append('limit', params.limit);
+        if (params.offset) searchParams.append('offset', params.offset);
+        const queryString = searchParams.toString();
+        return fetchAPI(`/orders${queryString ? `?${queryString}` : ''}`);
+    },
+    get: (orderId) => fetchAPI(`/orders/${orderId}`),
+    updateStatus: (orderId, status) => fetchAPI(`/orders/${orderId}/status`, {
+        method: 'PUT',
+        body: JSON.stringify({ status })
+    }),
+};
+
 // Admin Stats API
 export const adminAPI = {
     /**
@@ -232,6 +249,7 @@ const api = {
     categories: categoriesAPI,
     reviews: reviewsAPI,
     users: usersAPI,
+    orders: ordersAPI,
     auth: authAPI,
     admin: adminAPI,
 };

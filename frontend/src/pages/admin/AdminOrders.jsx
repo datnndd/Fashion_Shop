@@ -1,31 +1,56 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { formatPriceVND } from '../../utils/currency';
+import { ordersAPI } from '../../services/api';
 
 const AdminOrders = () => {
     const [selectedStatus, setSelectedStatus] = useState('');
     const [selectedOrder, setSelectedOrder] = useState(null);
+    const [orders, setOrders] = useState([]);
+    const [loading, setLoading] = useState(true);
 
-    // Mock orders data
-    const orders = [
-        { id: 'ORD-001', customer: 'Sarah M.', email: 'sarah@email.com', items: 3, total: 6125000, status: 'Processing', date: 'Dec 16, 2024', address: '123 Main St, New York, NY 10001' },
-        { id: 'ORD-002', customer: 'James K.', email: 'james@email.com', items: 1, total: 3000000, status: 'Shipped', date: 'Dec 16, 2024', address: '456 Oak Ave, Los Angeles, CA 90001' },
-        { id: 'ORD-003', customer: 'Emily R.', email: 'emily@email.com', items: 2, total: 2225000, status: 'Delivered', date: 'Dec 15, 2024', address: '789 Pine Blvd, Chicago, IL 60601' },
-        { id: 'ORD-004', customer: 'Marcus T.', email: 'marcus@email.com', items: 4, total: 7800000, status: 'Pending', date: 'Dec 15, 2024', address: '321 Elm St, Miami, FL 33101' },
-        { id: 'ORD-005', customer: 'Alex P.', email: 'alex@email.com', items: 1, total: 1375000, status: 'Delivered', date: 'Dec 14, 2024', address: '654 Cedar Ln, Seattle, WA 98101' },
-        { id: 'ORD-006', customer: 'Lisa W.', email: 'lisa@email.com', items: 2, total: 4375000, status: 'Cancelled', date: 'Dec 14, 2024', address: '987 Birch Dr, Austin, TX 78701' },
-    ];
-
-    const statusColors = {
-        'Pending': 'bg-yellow-500/20 text-yellow-400',
-        'Processing': 'bg-blue-500/20 text-blue-400',
-        'Shipped': 'bg-purple-500/20 text-purple-400',
-        'Delivered': 'bg-green-500/20 text-green-400',
-        'Cancelled': 'bg-red-500/20 text-red-400',
+    const fetchOrders = async () => {
+        try {
+            setLoading(true);
+            const params = selectedStatus ? { status: selectedStatus } : {};
+            const data = await ordersAPI.list(params);
+            setOrders(data);
+        } catch (error) {
+            console.error('Failed to fetch orders:', error);
+        } finally {
+            setLoading(false);
+        }
     };
 
-    const filteredOrders = selectedStatus
-        ? orders.filter(o => o.status === selectedStatus)
-        : orders;
+    useEffect(() => {
+        fetchOrders();
+    }, [selectedStatus]);
+
+    const handleStatusUpdate = async (orderId, newStatus) => {
+        try {
+            await ordersAPI.updateStatus(orderId, newStatus);
+            // Update local state
+            setOrders(prev => prev.map(o =>
+                o.order_id === orderId ? { ...o, status: newStatus } : o
+            ));
+            if (selectedOrder && selectedOrder.order_id === orderId) {
+                setSelectedOrder(prev => ({ ...prev, status: newStatus }));
+            }
+        } catch (error) {
+            console.error('Failed to update status:', error);
+            alert('Failed to update status');
+        }
+    };
+
+    const statusColors = {
+        'pending': 'bg-yellow-500/20 text-yellow-400',
+        'processing': 'bg-blue-500/20 text-blue-400',
+        'shipped': 'bg-purple-500/20 text-purple-400',
+        'delivered': 'bg-green-500/20 text-green-400',
+        'cancelled': 'bg-red-500/20 text-red-400',
+    };
+
+
+
 
     return (
         <div className="space-y-6">
@@ -43,7 +68,7 @@ const AdminOrders = () => {
 
             {/* Status tabs */}
             <div className="flex flex-wrap gap-2">
-                {['', 'Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled'].map((status) => (
+                {['', 'pending', 'processing', 'shipped', 'delivered', 'cancelled'].map((status) => (
                     <button
                         key={status}
                         onClick={() => setSelectedStatus(status)}
@@ -72,24 +97,25 @@ const AdminOrders = () => {
                                 <th className="px-6 py-4 font-medium">Actions</th>
                             </tr>
                         </thead>
+
                         <tbody>
-                            {filteredOrders.map((order) => (
-                                <tr key={order.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                                    <td className="px-6 py-4 font-medium">{order.id}</td>
+                            {orders.map((order) => (
+                                <tr key={order.order_id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                                    <td className="px-6 py-4 font-medium">{order.code || `#${order.order_id}`}</td>
                                     <td className="px-6 py-4">
                                         <div>
-                                            <p className="font-medium">{order.customer}</p>
-                                            <p className="text-sm text-gray-400">{order.email}</p>
+                                            <p className="font-medium">{order.recipient_name}</p>
+                                            <p className="text-sm text-gray-400">{order.recipient_phone}</p>
                                         </div>
                                     </td>
-                                    <td className="px-6 py-4 text-gray-400">{order.items}</td>
-                                    <td className="px-6 py-4 font-medium">{formatPriceVND(order.total)}</td>
+                                    <td className="px-6 py-4 text-gray-400">{order.items?.length || 0}</td>
+                                    <td className="px-6 py-4 font-medium">{formatPriceVND(order.total_price)}</td>
                                     <td className="px-6 py-4">
-                                        <span className={`px-2 py-1 rounded text-xs font-medium ${statusColors[order.status]}`}>
+                                        <span className={`px-2 py-1 rounded text-xs font-medium ${statusColors[order.status] || 'bg-gray-500/20 text-gray-400'}`}>
                                             {order.status}
                                         </span>
                                     </td>
-                                    <td className="px-6 py-4 text-gray-400">{order.date}</td>
+                                    <td className="px-6 py-4 text-gray-400">{new Date(order.created_at).toLocaleDateString()}</td>
                                     <td className="px-6 py-4">
                                         <div className="flex items-center gap-2">
                                             <button
@@ -97,9 +123,6 @@ const AdminOrders = () => {
                                                 className="p-2 hover:bg-white/10 rounded-lg transition-colors text-gray-400 hover:text-white"
                                             >
                                                 <span className="material-symbols-outlined text-[18px]">visibility</span>
-                                            </button>
-                                            <button className="p-2 hover:bg-white/10 rounded-lg transition-colors text-gray-400 hover:text-white">
-                                                <span className="material-symbols-outlined text-[18px]">print</span>
                                             </button>
                                         </div>
                                     </td>
@@ -123,15 +146,19 @@ const AdminOrders = () => {
                         <div className="p-6 space-y-6">
                             {/* Status */}
                             <div className="flex items-center justify-between">
-                                <span className={`px-3 py-1 rounded text-sm font-medium ${statusColors[selectedOrder.status]}`}>
+                                <span className={`px-3 py-1 rounded text-sm font-medium ${statusColors[selectedOrder.status] || 'bg-gray-500/20 text-gray-400'}`}>
                                     {selectedOrder.status}
                                 </span>
-                                <select className="bg-white/5 rounded-lg px-4 py-2 text-sm border-none outline-none cursor-pointer">
-                                    <option>Update Status</option>
-                                    <option>Processing</option>
-                                    <option>Shipped</option>
-                                    <option>Delivered</option>
-                                    <option>Cancelled</option>
+                                <select
+                                    className="bg-white/5 rounded-lg px-4 py-2 text-sm border-none outline-none cursor-pointer"
+                                    value={selectedOrder.status}
+                                    onChange={(e) => handleStatusUpdate(selectedOrder.order_id, e.target.value)}
+                                >
+                                    <option value="pending">Pending</option>
+                                    <option value="processing">Processing</option>
+                                    <option value="shipped">Shipped</option>
+                                    <option value="delivered">Delivered</option>
+                                    <option value="cancelled">Cancelled</option>
                                 </select>
                             </div>
 
@@ -139,12 +166,12 @@ const AdminOrders = () => {
                             <div className="grid grid-cols-2 gap-6">
                                 <div>
                                     <h3 className="text-sm font-medium text-gray-400 mb-2">Customer</h3>
-                                    <p className="font-medium">{selectedOrder.customer}</p>
-                                    <p className="text-sm text-gray-400">{selectedOrder.email}</p>
+                                    <p className="font-medium">{selectedOrder.recipient_name}</p>
+                                    <p className="text-sm text-gray-400">{selectedOrder.recipient_phone}</p>
                                 </div>
                                 <div>
                                     <h3 className="text-sm font-medium text-gray-400 mb-2">Shipping Address</h3>
-                                    <p className="text-sm">{selectedOrder.address}</p>
+                                    <p className="text-sm">{selectedOrder.shipping_address_full}</p>
                                 </div>
                             </div>
 
@@ -152,14 +179,16 @@ const AdminOrders = () => {
                             <div>
                                 <h3 className="text-sm font-medium text-gray-400 mb-3">Order Items</h3>
                                 <div className="bg-white/5 rounded-lg p-4 space-y-3">
-                                    {[...Array(selectedOrder.items)].map((_, i) => (
+                                    {selectedOrder.items?.map((item, i) => (
                                         <div key={i} className="flex items-center gap-4">
-                                            <div className="w-12 h-12 bg-[#d411d4]/20 rounded-lg"></div>
-                                            <div className="flex-1">
-                                                <p className="font-medium">Product Item {i + 1}</p>
-                                                <p className="text-sm text-gray-400">Size: M / Color: Pink</p>
+                                            <div className="w-12 h-12 bg-[#d411d4]/20 rounded-lg flex items-center justify-center">
+                                                <span className="material-symbols-outlined text-white/50">inventory_2</span>
                                             </div>
-                                            <p className="font-medium">{formatPriceVND(selectedOrder.total / selectedOrder.items)}</p>
+                                            <div className="flex-1">
+                                                <p className="font-medium">{item.product_name}</p>
+                                                <p className="text-sm text-gray-400">Qty: {item.quantity}</p>
+                                            </div>
+                                            <p className="font-medium">{formatPriceVND(item.total_price)}</p>
                                         </div>
                                     ))}
                                 </div>
@@ -168,7 +197,7 @@ const AdminOrders = () => {
                             {/* Total */}
                             <div className="flex items-center justify-between pt-4 border-t border-white/5">
                                 <span className="font-medium">Total</span>
-                                <span className="text-xl font-bold">{formatPriceVND(selectedOrder.total)}</span>
+                                <span className="text-xl font-bold">{formatPriceVND(selectedOrder.total_price)}</span>
                             </div>
                         </div>
                         <div className="p-6 border-t border-white/5 flex justify-end gap-3">
