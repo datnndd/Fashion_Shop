@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
 const Header = () => {
-    const { isAuthenticated, user } = useAuth();
+    const { isAuthenticated, user, loading } = useAuth();
     return (
         <header className="sticky top-0 z-50 w-full backdrop-blur-md bg-[#221022]/60 border-b border-white/5">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -27,13 +27,15 @@ const Header = () => {
 
                     {/* Action Icons */}
                     <div className="flex items-center gap-3">
-                        {/* Auth Buttons */}
-                        {isAuthenticated ? (
+                        {/* Auth Buttons - Only show after loading is complete */}
+                        {!loading && isAuthenticated && (
                             <Link to="/account" aria-label="Account" className="flex items-center gap-2 p-2 hover:bg-white/10 rounded-full transition-colors text-white group">
                                 <span className="material-symbols-outlined group-hover:text-[#d411d4] transition-colors">person</span>
                             </Link>
-                        ) : (
-                            <div className="hidden md:flex items-center gap-3">
+                        )}
+                        {/* Login/Register - Show on all screen sizes when not logged in and loading is complete */}
+                        {!loading && !isAuthenticated && (
+                            <div className="flex items-center gap-3">
                                 <Link to="/login" className="text-sm font-medium text-white hover:text-[#d411d4] transition-colors">
                                     Login
                                 </Link>

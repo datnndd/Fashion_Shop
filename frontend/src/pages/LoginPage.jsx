@@ -33,7 +33,7 @@ const LoginPage = () => {
             // Store token via context
             login(response.access_token, response.user);
             // Navigate based on role
-            if (response.user && response.user.role === 'admin') {
+            if (response.user && response.user.role === 'manager') {
                 navigate('/admin');
             } else {
                 navigate('/');

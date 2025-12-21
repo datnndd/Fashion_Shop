@@ -3,6 +3,19 @@ import { Link, useNavigate } from 'react-router-dom';
 import { authAPI } from '../services/api';
 import { useTheme } from '../context/ThemeContext';
 
+// Password validation helper
+const validatePassword = (password) => {
+    const requirements = {
+        minLength: password.length >= 8,
+        hasUppercase: /[A-Z]/.test(password),
+        hasLowercase: /[a-z]/.test(password),
+        hasNumber: /[0-9]/.test(password),
+        hasSpecial: /[!@#$%^&*(),.?":{}|<>_\-+=\[\]\\\/`~]/.test(password),
+    };
+    const isValid = Object.values(requirements).every(Boolean);
+    return { requirements, isValid };
+};
+
 const RegisterPage = () => {
     const navigate = useNavigate();
     const { theme } = useTheme();
@@ -23,12 +36,20 @@ const RegisterPage = () => {
         }));
     };
 
+    const passwordValidation = validatePassword(formData.password);
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
 
         if (formData.password !== formData.confirmPassword) {
             setError('Passwords do not match');
+            return;
+        }
+
+        // Validate password strength
+        if (!passwordValidation.isValid) {
+            setError('Password does not meet security requirements');
             return;
         }
 
@@ -106,8 +127,44 @@ const RegisterPage = () => {
                             onChange={handleChange}
                             required
                             className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:outline-none focus:border-white/30 transition-colors text-white"
-                            placeholder="Create a password"
+                            placeholder="Create a strong password"
                         />
+                        {/* Password Requirements */}
+                        <div className="mt-3 p-3 rounded-lg bg-white/5 border border-white/10">
+                            <p className="text-xs text-white/60 mb-2 font-medium">Password must contain:</p>
+                            <ul className="text-xs space-y-1">
+                                <li className={`flex items-center gap-2 ${passwordValidation.requirements.minLength ? 'text-green-400' : 'text-white/40'}`}>
+                                    <span className="material-symbols-outlined text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+                                        {passwordValidation.requirements.minLength ? 'check_circle' : 'circle'}
+                                    </span>
+                                    At least 8 characters
+                                </li>
+                                <li className={`flex items-center gap-2 ${passwordValidation.requirements.hasUppercase ? 'text-green-400' : 'text-white/40'}`}>
+                                    <span className="material-symbols-outlined text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+                                        {passwordValidation.requirements.hasUppercase ? 'check_circle' : 'circle'}
+                                    </span>
+                                    At least 1 uppercase letter (A-Z)
+                                </li>
+                                <li className={`flex items-center gap-2 ${passwordValidation.requirements.hasLowercase ? 'text-green-400' : 'text-white/40'}`}>
+                                    <span className="material-symbols-outlined text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+                                        {passwordValidation.requirements.hasLowercase ? 'check_circle' : 'circle'}
+                                    </span>
+                                    At least 1 lowercase letter (a-z)
+                                </li>
+                                <li className={`flex items-center gap-2 ${passwordValidation.requirements.hasNumber ? 'text-green-400' : 'text-white/40'}`}>
+                                    <span className="material-symbols-outlined text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+                                        {passwordValidation.requirements.hasNumber ? 'check_circle' : 'circle'}
+                                    </span>
+                                    At least 1 number (0-9)
+                                </li>
+                                <li className={`flex items-center gap-2 ${passwordValidation.requirements.hasSpecial ? 'text-green-400' : 'text-white/40'}`}>
+                                    <span className="material-symbols-outlined text-[14px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+                                        {passwordValidation.requirements.hasSpecial ? 'check_circle' : 'circle'}
+                                    </span>
+                                    At least 1 special character (!@#$%^&*...)
+                                </li>
+                            </ul>
+                        </div>
                     </div>
 
                     <div>
@@ -121,11 +178,17 @@ const RegisterPage = () => {
                             className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 focus:outline-none focus:border-white/30 transition-colors text-white"
                             placeholder="Confirm your password"
                         />
+                        {formData.confirmPassword && formData.password !== formData.confirmPassword && (
+                            <p className="mt-2 text-xs text-red-400 flex items-center gap-1">
+                                <span className="material-symbols-outlined text-[14px]">error</span>
+                                Passwords do not match
+                            </p>
+                        )}
                     </div>
 
                     <button
                         type="submit"
-                        disabled={loading}
+                        disabled={loading || !passwordValidation.isValid || formData.password !== formData.confirmPassword}
                         className="w-full py-3.5 rounded-xl font-medium transition-all transform active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
                         style={{ backgroundColor: theme.accentColor }}
                     >

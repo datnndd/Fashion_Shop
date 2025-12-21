@@ -5,6 +5,7 @@ import { ordersAPI } from '../../services/api';
 const AdminOrders = () => {
     const [selectedStatus, setSelectedStatus] = useState('');
     const [selectedOrder, setSelectedOrder] = useState(null);
+    const [tempStatus, setTempStatus] = useState('');
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
 
@@ -139,7 +140,10 @@ const AdminOrders = () => {
                     <div className="bg-[#1a1a2e] rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
                         <div className="p-6 border-b border-white/5 flex items-center justify-between">
                             <h2 className="text-lg font-bold">Order {selectedOrder.id}</h2>
-                            <button onClick={() => setSelectedOrder(null)} className="text-gray-400 hover:text-white">
+                            <button onClick={() => {
+                                setSelectedOrder(null);
+                                setTempStatus('');
+                            }} className="text-gray-400 hover:text-white">
                                 <span className="material-symbols-outlined">close</span>
                             </button>
                         </div>
@@ -149,17 +153,27 @@ const AdminOrders = () => {
                                 <span className={`px-3 py-1 rounded text-sm font-medium ${statusColors[selectedOrder.status] || 'bg-gray-500/20 text-gray-400'}`}>
                                     {selectedOrder.status}
                                 </span>
-                                <select
-                                    className="bg-white/5 rounded-lg px-4 py-2 text-sm border-none outline-none cursor-pointer"
-                                    value={selectedOrder.status}
-                                    onChange={(e) => handleStatusUpdate(selectedOrder.order_id, e.target.value)}
-                                >
-                                    <option value="pending">Pending</option>
-                                    <option value="processing">Processing</option>
-                                    <option value="shipped">Shipped</option>
-                                    <option value="delivered">Delivered</option>
-                                    <option value="cancelled">Cancelled</option>
-                                </select>
+                                <div className="flex items-center gap-2">
+                                    <select
+                                        className="bg-white/5 rounded-lg px-4 py-2 text-sm border-none outline-none cursor-pointer"
+                                        value={tempStatus || selectedOrder.status}
+                                        onChange={(e) => setTempStatus(e.target.value)}
+                                    >
+                                        <option value="pending">Pending</option>
+                                        <option value="processing">Processing</option>
+                                        <option value="shipped">Shipped</option>
+                                        <option value="delivered">Delivered</option>
+                                        <option value="cancelled">Cancelled</option>
+                                    </select>
+                                    {tempStatus && tempStatus !== selectedOrder.status && (
+                                        <button
+                                            onClick={() => handleStatusUpdate(selectedOrder.order_id, tempStatus)}
+                                            className="px-3 py-2 bg-green-500 hover:bg-green-600 rounded-lg text-xs font-bold transition-colors uppercase tracking-wider"
+                                        >
+                                            OK
+                                        </button>
+                                    )}
+                                </div>
                             </div>
 
                             {/* Customer info */}
@@ -205,7 +219,10 @@ const AdminOrders = () => {
                                 <span className="material-symbols-outlined text-[18px]">print</span>
                                 Print Invoice
                             </button>
-                            <button onClick={() => setSelectedOrder(null)} className="px-4 py-2 bg-[#d411d4] hover:bg-[#b00eb0] rounded-lg text-sm font-medium transition-colors">
+                            <button onClick={() => {
+                                setSelectedOrder(null);
+                                setTempStatus('');
+                            }} className="px-4 py-2 bg-[#d411d4] hover:bg-[#b00eb0] rounded-lg text-sm font-medium transition-colors">
                                 Close
                             </button>
                         </div>

@@ -10,7 +10,7 @@ const AdminLayout = () => {
         { path: '/admin/products', icon: 'inventory_2', label: 'Products' },
 
         { path: '/admin/orders', icon: 'shopping_cart', label: 'Orders' },
-        { path: '/admin/customers', icon: 'group', label: 'Customers' },
+        { path: '/admin/users', icon: 'group', label: 'Users' },
         { path: '/admin/reviews', icon: 'reviews', label: 'Reviews' },
     ];
 

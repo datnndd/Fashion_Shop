@@ -3,10 +3,11 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_session
+from app.deps import get_admin_user
 from app.models.marketing import Review
 from app.models.catalog import Product
 from app.models.user import User
-from app.schemas.review import ReviewCreate, ReviewRead, ReviewReadWithUser
+from app.schemas.review import ReviewCreate, ReviewRead, ReviewReadWithUser, ReviewReadAdmin
 
 router = APIRouter(prefix="/reviews", tags=["reviews"])
 
@@ -109,6 +110,89 @@ async def mark_review_helpful(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Review not found")
     
     review.helpful_count += 1
+    await session.commit()
+    await session.refresh(review)
+    return review
+@router.get("/", response_model=list[ReviewReadAdmin])
+async def list_all_reviews(
+    is_approved: bool | None = Query(default=None),
+    limit: int = Query(default=50, le=100),
+    offset: int = Query(default=0),
+    session: AsyncSession = Depends(get_session),
+    admin: User = Depends(get_admin_user),
+) -> list[ReviewReadAdmin]:
+    """Get all reviews (for admin dashboard)."""
+    # Join Review with User and Product
+    query = (
+        select(
+            Review,
+            User.name.label("user_name"),
+            Product.name.label("product_name"),
+            Product.slug.label("product_slug")
+        )
+        .join(User, Review.user_id == User.user_id)
+        .join(Product, Review.product_id == Product.product_id)
+    )
+    
+    if is_approved is not None:
+        query = query.where(Review.is_approved == is_approved)
+    
+    query = query.order_by(Review.created_at.desc()).offset(offset).limit(limit)
+    result = await session.execute(query)
+    
+    reviews = []
+    for review, user_name, product_name, product_slug in result:
+        review_dict = {
+            "review_id": review.review_id,
+            "user_id": review.user_id,
+            "product_id": review.product_id,
+            "rating": review.rating,
+            "title": review.title,
+            "comment": review.comment,
+            "size_purchased": review.size_purchased,
+            "images": review.images,
+            "helpful_count": review.helpful_count,
+            "created_at": review.created_at,
+            "is_approved": review.is_approved,
+            "user_name": user_name,
+            "product_name": product_name,
+            "product_slug": product_slug,
+            "is_verified": True,
+        }
+        reviews.append(ReviewReadAdmin(**review_dict))
+    
+    return reviews
+
+
+@router.patch("/{review_id}/approve", response_model=ReviewRead)
+async def approve_review(
+    review_id: int,
+    session: AsyncSession = Depends(get_session),
+    admin: User = Depends(get_admin_user),
+) -> ReviewRead:
+    """Approve a review."""
+    review = await session.get(Review, review_id)
+    if not review:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Review not found")
+    
+    review.is_approved = True
+    await session.commit()
+    await session.refresh(review)
+    return review
+
+
+@router.patch("/{review_id}/reject", response_model=ReviewRead)
+async def reject_review(
+    review_id: int,
+    session: AsyncSession = Depends(get_session),
+    admin: User = Depends(get_admin_user),
+) -> ReviewRead:
+    """Reject a review."""
+    review = await session.get(Review, review_id)
+    if not review:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Review not found")
+    
+    review.is_approved = False
     await session.commit()
     await session.refresh(review)
     return review

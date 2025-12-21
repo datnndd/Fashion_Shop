@@ -26,8 +26,8 @@ const ProtectedAdminRoute = ({ children }) => {
         return <Navigate to="/login" replace />;
     }
 
-    // Show access denied if not admin
-    if (user?.role !== 'admin') {
+    // Show access denied if not manager
+    if (user?.role !== 'manager') {
         return (
             <div className="min-h-screen bg-[#0f0f1a] flex items-center justify-center font-[Space_Grotesk]">
                 <div className="text-center max-w-md px-6">

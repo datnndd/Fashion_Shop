@@ -52,3 +52,21 @@ class UserAddressRead(UserAddressBase):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class UserAddressCreateMe(BaseModel):
+    """Schema for creating address for current user (no user_id needed)"""
+    province_id: int
+    ward_id: int
+    street: str
+    full_address: str
+    is_default: bool = False
+
+
+class UserAddressUpdate(BaseModel):
+    """Schema for updating user address"""
+    province_id: int | None = None
+    ward_id: int | None = None
+    street: str | None = None
+    full_address: str | None = None
+    is_default: bool | None = None

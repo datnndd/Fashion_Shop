@@ -13,7 +13,13 @@ class UserBase(BaseModel):
 
 
 class UserCreate(UserBase):
-    password: str = Field(min_length=6)
+    password: str = Field(min_length=8)
+
+
+class AdminUserCreate(UserBase):
+    """Schema for admin to create users with specific roles"""
+    password: str = Field(min_length=8)
+    role: str = Field(default="customer")
 
 
 class UserRead(UserBase):
@@ -25,3 +31,26 @@ class UserRead(UserBase):
     deleted_at: datetime | None
 
     model_config = {"from_attributes": True}
+
+
+class UserRoleUpdate(BaseModel):
+    role: str
+
+
+class UserListResponse(BaseModel):
+    items: list[UserRead]
+    total: int
+
+
+class UserUpdate(BaseModel):
+    """Schema for updating user profile"""
+    name: str | None = None
+    phone: str | None = Field(default=None, max_length=20)
+    gender: int | None = None
+    dob: date | None = None
+
+
+class PasswordChange(BaseModel):
+    """Schema for changing password"""
+    current_password: str
+    new_password: str = Field(min_length=8)

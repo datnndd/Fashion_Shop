@@ -31,3 +31,9 @@ class ReviewReadWithUser(ReviewRead):
     """Review with user name included."""
     user_name: str | None = None
     is_verified: bool = False
+
+
+class ReviewReadAdmin(ReviewReadWithUser):
+    """Review with product details for admin dashboard."""
+    product_name: str
+    product_slug: str

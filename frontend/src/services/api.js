@@ -140,7 +140,12 @@ export const reviewsAPI = {
     /**
      * Get all reviews (for admin)
      */
-    listAll: () => fetchAPI('/reviews'),
+    listAll: () => {
+        const token = localStorage.getItem('token');
+        return fetchAPI('/reviews', {
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+    },
 
     /**
      * Get review summary for a product
@@ -155,12 +160,24 @@ export const reviewsAPI = {
     /**
      * Approve a review
      */
-    approve: (reviewId) => fetchAPI(`/reviews/${reviewId}/approve`, { method: 'POST' }),
+    approve: (reviewId) => {
+        const token = localStorage.getItem('token');
+        return fetchAPI(`/reviews/${reviewId}/approve`, {
+            method: 'PATCH',
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+    },
 
     /**
      * Reject a review
      */
-    reject: (reviewId) => fetchAPI(`/reviews/${reviewId}/reject`, { method: 'POST' }),
+    reject: (reviewId) => {
+        const token = localStorage.getItem('token');
+        return fetchAPI(`/reviews/${reviewId}/reject`, {
+            method: 'PATCH',
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+    },
 };
 
 // Users API (for admin)
@@ -172,14 +189,47 @@ export const usersAPI = {
         const searchParams = new URLSearchParams();
         if (params.limit) searchParams.append('limit', params.limit);
         if (params.offset) searchParams.append('offset', params.offset);
+        if (params.role) searchParams.append('role', params.role);
         const queryString = searchParams.toString();
-        return fetchAPI(`/users${queryString ? `?${queryString}` : ''}`);
+        const token = localStorage.getItem('token');
+        return fetchAPI(`/users${queryString ? `?${queryString}` : ''}`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+    },
+
+    /**
+     * Create a new user (admin only)
+     */
+    create: (userData) => {
+        const token = localStorage.getItem('token');
+        return fetchAPI('/users/admin', {
+            method: 'POST',
+            body: JSON.stringify(userData),
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
     },
 
     /**
      * Get a single user
      */
-    get: (userId) => fetchAPI(`/users/${userId}`),
+    get: (userId) => {
+        const token = localStorage.getItem('token');
+        return fetchAPI(`/users/${userId}`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+    },
+
+    /**
+     * Update user role
+     */
+    updateRole: (userId, role) => {
+        const token = localStorage.getItem('token');
+        return fetchAPI(`/users/${userId}/role`, {
+            method: 'PATCH',
+            body: JSON.stringify({ role }),
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+    },
 };
 
 // Auth API
@@ -210,6 +260,101 @@ export const authAPI = {
     me: (token) => fetchAPI('/users/me', {
         headers: { Authorization: `Bearer ${token}` }
     }),
+
+    /**
+     * Update current user's profile
+     */
+    updateProfile: (data) => {
+        const token = localStorage.getItem('token');
+        return fetchAPI('/users/me', {
+            method: 'PATCH',
+            body: JSON.stringify(data),
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+    },
+
+    /**
+     * Change current user's password
+     */
+    changePassword: (currentPassword, newPassword) => {
+        const token = localStorage.getItem('token');
+        return fetchAPI('/users/me/change-password', {
+            method: 'POST',
+            body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+    },
+
+    /**
+     * Get current user's orders
+     */
+    getMyOrders: () => {
+        const token = localStorage.getItem('token');
+        return fetchAPI('/users/me/orders', {
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+    },
+};
+
+// Addresses API (for current user)
+export const addressesAPI = {
+    /**
+     * Get current user's addresses
+     */
+    list: () => {
+        const token = localStorage.getItem('token');
+        return fetchAPI('/locations/me/addresses', {
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+    },
+
+    /**
+     * Create a new address
+     */
+    create: (data) => {
+        const token = localStorage.getItem('token');
+        return fetchAPI('/locations/me/addresses', {
+            method: 'POST',
+            body: JSON.stringify(data),
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+    },
+
+    /**
+     * Update an address
+     */
+    update: (addressId, data) => {
+        const token = localStorage.getItem('token');
+        return fetchAPI(`/locations/me/addresses/${addressId}`, {
+            method: 'PUT',
+            body: JSON.stringify(data),
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+    },
+
+    /**
+     * Delete an address
+     */
+    delete: (addressId) => {
+        const token = localStorage.getItem('token');
+        return fetchAPI(`/locations/me/addresses/${addressId}`, {
+            method: 'DELETE',
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+    },
+};
+
+// Locations API (provinces and wards)
+export const locationsAPI = {
+    /**
+     * Get all provinces
+     */
+    getProvinces: () => fetchAPI('/locations/provinces'),
+
+    /**
+     * Get wards by province
+     */
+    getWards: (provinceId) => fetchAPI(`/locations/provinces/${provinceId}/wards`),
 };
 
 // Orders API (for admin)
@@ -220,13 +365,25 @@ export const ordersAPI = {
         if (params.limit) searchParams.append('limit', params.limit);
         if (params.offset) searchParams.append('offset', params.offset);
         const queryString = searchParams.toString();
-        return fetchAPI(`/orders${queryString ? `?${queryString}` : ''}`);
+        const token = localStorage.getItem('token');
+        return fetchAPI(`/orders${queryString ? `?${queryString}` : ''}`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
     },
-    get: (orderId) => fetchAPI(`/orders/${orderId}`),
-    updateStatus: (orderId, status) => fetchAPI(`/orders/${orderId}/status`, {
-        method: 'PUT',
-        body: JSON.stringify({ status })
-    }),
+    get: (orderId) => {
+        const token = localStorage.getItem('token');
+        return fetchAPI(`/orders/${orderId}`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+    },
+    updateStatus: (orderId, status) => {
+        const token = localStorage.getItem('token');
+        return fetchAPI(`/orders/${orderId}/status`, {
+            method: 'PUT',
+            body: JSON.stringify({ status }),
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+    },
 };
 
 // Admin Stats API
@@ -252,6 +409,8 @@ const api = {
     orders: ordersAPI,
     auth: authAPI,
     admin: adminAPI,
+    addresses: addressesAPI,
+    locations: locationsAPI,
 };
 
 // Upload API

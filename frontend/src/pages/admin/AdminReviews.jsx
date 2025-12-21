@@ -1,27 +1,59 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { reviewsAPI } from '../../services/api';
 
 const AdminReviews = () => {
     const [filterStatus, setFilterStatus] = useState('');
+    const [reviews, setReviews] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
-    // Mock reviews data
-    const [reviews, setReviews] = useState([
-        { id: 1, product: 'Neon Oversized Knit', customer: 'Sarah M.', rating: 5, title: 'Perfect fit!', content: 'This hoodie exceeded my expectations. The fabric is so soft and the color is vibrant just like the photos.', date: 'Dec 15, 2024', status: 'Approved' },
-        { id: 2, product: 'Urban Tee - Magenta', customer: 'James K.', rating: 4, title: 'Great quality', content: 'Really nice t-shirt, fits well. Would love more color options.', date: 'Dec 14, 2024', status: 'Pending' },
-        { id: 3, product: 'Tech Fleece Zip', customer: 'Emily R.', rating: 5, title: 'Love it!', content: 'Super comfortable and looks amazing. Getting compliments everywhere I go!', date: 'Dec 13, 2024', status: 'Approved' },
-        { id: 4, product: 'Core Hoodie', customer: 'Marcus T.', rating: 2, title: 'Sizing issues', content: 'The hoodie runs small. Had to return for a larger size.', date: 'Dec 12, 2024', status: 'Pending' },
-        { id: 5, product: 'Summer Linen Shirt', customer: 'Alex P.', rating: 5, title: 'Perfect for summer', content: 'Light and breathable, exactly what I needed for the warm weather.', date: 'Dec 11, 2024', status: 'Approved' },
-    ]);
+    useEffect(() => {
+        fetchReviews();
+    }, []);
 
-    const handleApprove = (id) => {
-        setReviews(reviews.map(r => r.id === id ? { ...r, status: 'Approved' } : r));
+    const fetchReviews = async () => {
+        try {
+            setLoading(true);
+            const data = await reviewsAPI.listAll();
+            setReviews(data);
+            setError(null);
+        } catch (err) {
+            console.error('Failed to fetch reviews:', err);
+            setError('Could not load reviews. Please try again later.');
+        } finally {
+            setLoading(false);
+        }
     };
 
-    const handleReject = (id) => {
-        setReviews(reviews.map(r => r.id === id ? { ...r, status: 'Rejected' } : r));
+    const handleApprove = async (id) => {
+        try {
+            await reviewsAPI.approve(id);
+            setReviews(reviews.map(r => r.review_id === id ? { ...r, is_approved: true } : r));
+        } catch (err) {
+            console.error('Failed to approve review:', err);
+            alert('Failed to approve review');
+        }
+    };
+
+    const handleReject = async (id) => {
+        try {
+            await reviewsAPI.reject(id);
+            setReviews(reviews.map(r => r.review_id === id ? { ...r, is_approved: false } : r));
+        } catch (err) {
+            console.error('Failed to reject review:', err);
+            alert('Failed to reject review');
+        }
+    };
+
+    const getReviewStatus = (review) => {
+        if (review.is_approved === true) return 'Approved';
+        if (review.is_approved === false) return 'Rejected';
+        return 'Pending';
     };
 
     const filteredReviews = filterStatus
-        ? reviews.filter(r => r.status === filterStatus)
+        ? reviews.filter(r => getReviewStatus(r) === filterStatus)
         : reviews;
 
     const renderStars = (rating) => {
@@ -45,6 +77,14 @@ const AdminReviews = () => {
         'Rejected': 'bg-red-500/20 text-red-400',
     };
 
+    if (loading) {
+        return (
+            <div className="flex items-center justify-center min-h-[400px]">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#d411d4]"></div>
+            </div>
+        );
+    }
+
     return (
         <div className="space-y-6">
             {/* Header */}
@@ -56,7 +96,7 @@ const AdminReviews = () => {
                 <div className="flex items-center gap-2">
                     <span className="text-sm text-gray-400">Pending reviews:</span>
                     <span className="px-2 py-1 bg-yellow-500/20 text-yellow-400 rounded text-sm font-medium">
-                        {reviews.filter(r => r.status === 'Pending').length}
+                        {reviews.filter(r => r.is_approved === null).length}
                     </span>
                 </div>
             </div>
@@ -68,8 +108,8 @@ const AdminReviews = () => {
                         key={status}
                         onClick={() => setFilterStatus(status)}
                         className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${filterStatus === status
-                                ? 'bg-[#d411d4] text-white'
-                                : 'bg-white/5 text-gray-400 hover:text-white hover:bg-white/10'
+                            ? 'bg-[#d411d4] text-white'
+                            : 'bg-white/5 text-gray-400 hover:text-white hover:bg-white/10'
                             }`}
                     >
                         {status || 'All Reviews'}
@@ -77,30 +117,47 @@ const AdminReviews = () => {
                 ))}
             </div>
 
+            {error && (
+                <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-xl">
+                    {error}
+                </div>
+            )}
+
             {/* Reviews list */}
             <div className="space-y-4">
                 {filteredReviews.map((review) => (
-                    <div key={review.id} className="bg-[#1a1a2e] rounded-xl border border-white/5 p-6">
+                    <div key={review.review_id} className="bg-[#1a1a2e] rounded-xl border border-white/5 p-6 transition-all hover:border-white/10">
                         <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                             <div className="flex-1">
                                 {/* Header */}
                                 <div className="flex items-center justify-between mb-3">
                                     <div className="flex items-center gap-3">
                                         <div className="w-10 h-10 bg-gradient-to-br from-[#d411d4] to-purple-600 rounded-full flex items-center justify-center text-sm font-bold">
-                                            {review.customer.split(' ').map(n => n[0]).join('')}
+                                            {review.user_name ? review.user_name.split(' ').map(n => n[0]).join('') : 'U'}
                                         </div>
                                         <div>
-                                            <p className="font-medium">{review.customer}</p>
-                                            <p className="text-sm text-gray-400">{review.date}</p>
+                                            <p className="font-medium">{review.user_name || 'Anonymous'}</p>
+                                            <p className="text-sm text-gray-400">
+                                                {new Date(review.created_at).toLocaleDateString()}
+                                            </p>
                                         </div>
                                     </div>
-                                    <span className={`px-2 py-1 rounded text-xs font-medium ${statusColors[review.status]}`}>
-                                        {review.status}
+                                    <span className={`px-2 py-1 rounded text-xs font-medium ${statusColors[getReviewStatus(review)]}`}>
+                                        {getReviewStatus(review)}
                                     </span>
                                 </div>
 
                                 {/* Product */}
-                                <p className="text-sm text-[#d411d4] mb-2">{review.product}</p>
+                                <div className="mb-2 flex items-center gap-2">
+                                    <span className="text-xs text-gray-500 uppercase tracking-wider">Product:</span>
+                                    <Link
+                                        to={`/product/${review.product_slug}`}
+                                        className="text-sm text-[#d411d4] hover:underline flex items-center gap-1"
+                                    >
+                                        {review.product_name}
+                                        <span className="material-symbols-outlined text-[14px]">open_in_new</span>
+                                    </Link>
+                                </div>
 
                                 {/* Rating */}
                                 <div className="flex items-center gap-2 mb-2">
@@ -110,25 +167,40 @@ const AdminReviews = () => {
 
                                 {/* Content */}
                                 <h3 className="font-medium mb-1">{review.title}</h3>
-                                <p className="text-gray-400 text-sm">{review.content}</p>
+                                <p className="text-gray-400 text-sm whitespace-pre-wrap">{review.comment}</p>
                             </div>
 
                             {/* Actions */}
-                            {review.status === 'Pending' && (
+                            {review.is_approved === null && (
                                 <div className="flex gap-2 md:flex-col">
                                     <button
-                                        onClick={() => handleApprove(review.id)}
+                                        onClick={() => handleApprove(review.review_id)}
                                         className="px-4 py-2 bg-green-500/20 hover:bg-green-500/30 text-green-400 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
                                     >
                                         <span className="material-symbols-outlined text-[18px]">check</span>
                                         Approve
                                     </button>
                                     <button
-                                        onClick={() => handleReject(review.id)}
+                                        onClick={() => handleReject(review.review_id)}
                                         className="px-4 py-2 bg-red-500/20 hover:bg-red-500/30 text-red-400 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
                                     >
                                         <span className="material-symbols-outlined text-[18px]">close</span>
                                         Reject
+                                    </button>
+                                </div>
+                            )}
+
+                            {/* Re-moderate button if already moderated */}
+                            {review.is_approved !== null && (
+                                <div className="flex gap-2 md:flex-col">
+                                    <button
+                                        onClick={() => review.is_approved ? handleReject(review.review_id) : handleApprove(review.review_id)}
+                                        className="px-4 py-2 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                                    >
+                                        <span className="material-symbols-outlined text-[18px]">
+                                            {review.is_approved ? 'close' : 'check'}
+                                        </span>
+                                        {review.is_approved ? 'Reject' : 'Approve'}
                                     </button>
                                 </div>
                             )}

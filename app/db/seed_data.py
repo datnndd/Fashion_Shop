@@ -174,7 +174,7 @@ async def seed_users(session: AsyncSession) -> list[User]:
             name="Admin User",
             email="admin@basiccolor.com",
             password_hash=hash_password("admin123"),
-            role="admin",
+            role="manager",
             is_active=True
         ),
         # Regular customers

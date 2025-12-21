@@ -40,8 +40,20 @@ export const AuthProvider = ({ children }) => {
         setUser(null);
     };
 
+    const refreshUser = async () => {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+
+        try {
+            const userData = await authAPI.me(token);
+            setUser(userData);
+        } catch (error) {
+            console.error('Refresh user failed:', error);
+        }
+    };
+
     return (
-        <AuthContext.Provider value={{ user, loading, login, logout, isAuthenticated: !!user }}>
+        <AuthContext.Provider value={{ user, loading, login, logout, refreshUser, isAuthenticated: !!user }}>
             {children}
         </AuthContext.Provider>
     );
