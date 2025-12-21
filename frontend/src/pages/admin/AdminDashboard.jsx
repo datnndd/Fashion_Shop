@@ -52,43 +52,174 @@ const AdminDashboard = () => {
         }
     };
 
+    const formatChange = (value) => {
+        if (value === undefined || value === null || Number.isNaN(value)) return '0.0%';
+        const prefix = value >= 0 ? '+' : '';
+        return `${prefix}${value.toFixed(1)}%`;
+    };
+
     const statsCards = [
         {
             label: 'Total Revenue',
             value: formatPriceVND(dashboardData?.total_revenue || 0),
-            change: `${dashboardData?.revenue_change_percent >= 0 ? '+' : ''}${dashboardData?.revenue_change_percent.toFixed(1)}%`,
+            change: formatChange(dashboardData?.revenue_change_percent),
             positive: dashboardData?.revenue_change_percent >= 0,
             icon: 'payments'
         },
         {
             label: 'Orders',
-            value: dashboardData?.total_orders.toString() || '0',
-            change: `${dashboardData?.order_change_percent >= 0 ? '+' : ''}${dashboardData?.order_change_percent.toFixed(1)}%`,
+            value: (dashboardData?.total_orders ?? 0).toString(),
+            change: formatChange(dashboardData?.order_change_percent),
             positive: dashboardData?.order_change_percent >= 0,
             icon: 'shopping_bag'
         },
     ];
 
-    // Simple Bar Chart Component
-    const Chart = ({ data, color }) => {
-        if (!data || data.length === 0) return <div className="h-48 flex items-center justify-center text-gray-500">No data available</div>;
+    // Mixed Chart Component (Revenue Line & Orders Bar)
+    const MixedChart = ({ timeStats }) => {
+        if (!timeStats || timeStats.length === 0) {
+            return <div className="h-64 flex items-center justify-center text-gray-500">No data available</div>;
+        }
 
-        const maxValue = Math.max(...data.map(d => d.value)) || 1;
+        const revenueData = timeStats.map(s => s.revenue);
+        const orderData = timeStats.map(s => s.order_count);
+
+        const maxRevenue = Math.max(...revenueData, 1);
+        const maxOrders = Math.max(...orderData, 1);
+
+        const chartHeight = 350;
+        const chartWidth = 100;
+        const paddingTop = 20;
+        const paddingBottom = 40;
+        const paddingLeft = 5;
+        const paddingRight = 5;
+
+        const chartAreaHeight = chartHeight - paddingTop - paddingBottom;
+        const chartAreaWidth = chartWidth - paddingLeft - paddingRight;
+
+        const getX = (index) => {
+            return paddingLeft + (index / (timeStats.length - 1 || 1)) * chartAreaWidth;
+        };
+
+        const getYRevenue = (value) => {
+            return paddingTop + ((maxRevenue - value) / maxRevenue) * chartAreaHeight;
+        };
+
+        const getYOrders = (value) => {
+            return paddingTop + ((maxOrders - value) / maxOrders) * chartAreaHeight;
+        };
+
+        const gap = timeStats.length > 1 ? chartAreaWidth / (timeStats.length - 1) : chartAreaWidth;
+        const barWidth = Math.min(gap * 0.6, 6);
+
+        // Revenue Points (Line)
+        const revenuePoints = timeStats.map((item, i) => ({
+            x: getX(i),
+            y: getYRevenue(item.revenue),
+            value: item.revenue,
+            label: item.label
+        }));
+
+        // Order Points (Bar)
+        const orderPoints = timeStats.map((item, i) => ({
+            x: getX(i),
+            y: getYOrders(item.order_count),
+            value: item.order_count,
+            label: item.label,
+            barHeight: (chartHeight - paddingBottom) - getYOrders(item.order_count)
+        }));
+
+        const createPath = (points) => {
+            if (points.length === 0) return '';
+            let path = `M ${points[0].x},${points[0].y}`;
+            for (let i = 0; i < points.length - 1; i++) {
+                const curr = points[i];
+                const next = points[i + 1];
+                const midX = (curr.x + next.x) / 2;
+                path += ` Q ${curr.x},${curr.y} ${midX},${(curr.y + next.y) / 2}`;
+                path += ` Q ${next.x},${next.y} ${next.x},${next.y}`;
+            }
+            return path;
+        };
 
         return (
-            <div className="h-48 flex items-end gap-2 px-2">
-                {data.map((item, i) => (
-                    <div key={i} className="flex-1 flex flex-col items-center gap-2 group relative">
-                        <div
-                            className={`w-full rounded-t-sm transition-all duration-500 ${color}`}
-                            style={{ height: `${(item.value / maxValue) * 100}%` }}
-                        >
-                            <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
-                                {period === 'day' ? item.label : item.label} : {item.value.toLocaleString()}
+            <div className="h-[450px] relative">
+                <svg className="w-full h-full" viewBox={`0 0 ${chartWidth} ${chartHeight}`} preserveAspectRatio="none">
+                    <defs>
+                        <linearGradient id="gradient-revenue" x1="0%" y1="0%" x2="0%" y2="100%">
+                            <stop offset="0%" style={{ stopColor: '#d411d4', stopOpacity: 0.2 }} />
+                            <stop offset="100%" style={{ stopColor: '#d411d4', stopOpacity: 0 }} />
+                        </linearGradient>
+                        <linearGradient id="gradient-orders" x1="0%" y1="0%" x2="0%" y2="100%">
+                            <stop offset="0%" style={{ stopColor: '#3b82f6', stopOpacity: 0.5 }} />
+                            <stop offset="100%" style={{ stopColor: '#3b82f6', stopOpacity: 0.1 }} />
+                        </linearGradient>
+                    </defs>
+
+                    <line x1={paddingLeft - 2} y1={chartHeight - paddingBottom} x2={chartWidth - paddingRight + 2} y2={chartHeight - paddingBottom} stroke="#ffffff" strokeWidth="0.3" opacity="0.5" />
+
+                    {/* Orders Bars */}
+                    {orderPoints.map((point, i) => (
+                        <rect key={`bar-${i}`} x={point.x - barWidth / 2} y={point.y} width={barWidth} height={point.barHeight} fill="url(#gradient-orders)" rx="1" ry="1" />
+                    ))}
+
+                    {/* Revenue Line */}
+                    <path d={`${createPath(revenuePoints)} L ${revenuePoints[revenuePoints.length - 1].x},${chartHeight - paddingBottom} L ${paddingLeft},${chartHeight - paddingBottom} Z`} fill="url(#gradient-revenue)" />
+                    <path d={createPath(revenuePoints)} fill="none" stroke="#d411d4" strokeWidth="0.6" vectorEffect="non-scaling-stroke" />
+                </svg>
+
+                {/* X-axis Labels */}
+                <div className="flex justify-between text-xs text-gray-400 font-medium px-2 mt-2 absolute bottom-2 left-0 right-0">
+                    {timeStats.filter((_, i, arr) => {
+                        if (arr.length <= 7) return true;
+                        if (i === 0 || i === arr.length - 1) return true;
+                        const step = Math.floor(arr.length / 5);
+                        return i % step === 0;
+                    }).map((item, i) => <span key={i} className="text-center">{item.label}</span>)}
+                </div>
+
+                {/* Revenue Points Interaction */}
+                <div className="absolute inset-0 pointer-events-none">
+                    {revenuePoints.map((point, i) => (
+                        <div key={`rev-${i}`}
+                            className="group absolute w-3 h-3 -ml-1.5 -mt-1.5 rounded-full bg-[#1a1a2e] border-2 border-[#d411d4] hover:scale-125 transition-transform cursor-pointer pointer-events-auto flex items-center justify-center"
+                            style={{ left: `${(point.x / chartWidth) * 100}%`, top: `${(point.y / chartHeight) * 100}%` }}>
+                            <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10 pointer-events-none shadow-lg">
+                                {formatPriceVND(point.value)}
                             </div>
                         </div>
+                    ))}
+                </div>
+
+                {/* Order Bars Interaction */}
+                <div className="absolute inset-0 pointer-events-none">
+                    {orderPoints.map((point, i) => (
+                        <div key={`ord-${i}`}
+                            className="group absolute hover:bg-white/5 transition-colors cursor-pointer pointer-events-auto flex justify-center items-start"
+                            style={{
+                                left: `${((point.x - barWidth / 2) / chartWidth) * 100}%`,
+                                top: `${(point.y / chartHeight) * 100}%`,
+                                width: `${(barWidth / chartWidth) * 100}%`,
+                                height: `${(point.barHeight / chartHeight) * 100}%`
+                            }}>
+                            <div className="absolute bottom-full mb-2 bg-gray-800 text-white text-xs py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10 pointer-events-none shadow-lg">
+                                {point.value} Orders
+                            </div>
+                        </div>
+                    ))}
+                </div>
+
+                {/* Legend */}
+                <div className="flex items-center justify-center gap-6 mt-8">
+                    <div className="flex items-center gap-2">
+                        <div className="w-8 h-0.5 bg-[#d411d4]"></div>
+                        <span className="text-sm text-gray-400">Revenue</span>
                     </div>
-                ))}
+                    <div className="flex items-center gap-2">
+                        <div className="w-8 h-0.5 bg-blue-500"></div>
+                        <span className="text-sm text-gray-400">Orders</span>
+                    </div>
+                </div>
             </div>
         );
     };
@@ -199,33 +330,13 @@ const AdminDashboard = () => {
                 ))}
             </div>
 
-            {/* Charts Section */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="bg-[#1a1a2e] rounded-xl border border-white/5 p-6">
-                    <h2 className="text-lg font-bold mb-6">Revenue</h2>
-                    <Chart
-                        data={dashboardData?.time_stats?.map(s => ({ label: s.label, value: s.revenue }))}
-                        color="bg-[#d411d4]"
-                    />
-                    <div className="mt-4 flex justify-between text-[10px] text-gray-500 overflow-hidden">
-                        {dashboardData?.time_stats?.filter((_, i, arr) => i === 0 || i === arr.length - 1 || i === Math.floor(arr.length / 2)).map((s, i) => (
-                            <span key={i}>{s.label}</span>
-                        ))}
-                    </div>
-                </div>
-                <div className="bg-[#1a1a2e] rounded-xl border border-white/5 p-6">
-                    <h2 className="text-lg font-bold mb-6">Orders</h2>
-                    <Chart
-                        data={dashboardData?.time_stats?.map(s => ({ label: s.label, value: s.order_count }))}
-                        color="bg-blue-500"
-                    />
-                    <div className="mt-4 flex justify-between text-[10px] text-gray-500 overflow-hidden">
-                        {dashboardData?.time_stats.filter((_, i, arr) => i === 0 || i === arr.length - 1 || i === Math.floor(arr.length / 2)).map((s, i) => (
-                            <span key={i}>{s.label}</span>
-                        ))}
-                    </div>
-                </div>
+            {/* Combined Chart Section */}
+            <div className="bg-[#1a1a2e] rounded-xl border border-white/5 p-6">
+                <h2 className="text-lg font-bold mb-6">Revenue & Orders Overview</h2>
+                <MixedChart timeStats={dashboardData?.time_stats} />
             </div>
+
+
 
             {/* Products Tables Section */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

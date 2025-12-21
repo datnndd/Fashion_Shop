@@ -15,6 +15,9 @@ const Header = () => {
 
                     {/* Desktop Nav */}
                     <nav className="hidden md:flex gap-8">
+                        <Link to="/products" className="text-sm font-medium text-white hover:text-[#d411d4] transition-colors">
+                            Products
+                        </Link>
 
                         <Link to="/about" className="text-sm font-medium text-white hover:text-[#d411d4] transition-colors">
                             About
@@ -45,13 +48,16 @@ const Header = () => {
                             </div>
                         )}
 
-                        <button aria-label="Search" className="p-2 hover:bg-white/10 rounded-full transition-colors text-white">
-                            <span className="material-symbols-outlined">search</span>
-                        </button>
-                        <Link to="/cart" aria-label="Shopping Bag" className="p-2 hover:bg-white/10 rounded-full transition-colors text-white relative">
-                            <span className="material-symbols-outlined">shopping_bag</span>
-                            <span className="absolute top-1 right-1 w-2 h-2 bg-[#d411d4] rounded-full"></span>
-                        </Link>
+
+                        {/* Search Removed as per request */}
+
+                        {/* Cart - Only show after loading is complete and if authenticated, or maybe just if authenticated? Request said "When user is NOT logged in, only show Login/Register, do NOT show cart" */}
+                        {!loading && isAuthenticated && (
+                            <Link to="/cart" aria-label="Shopping Bag" className="p-2 hover:bg-white/10 rounded-full transition-colors text-white relative">
+                                <span className="material-symbols-outlined">shopping_bag</span>
+                                <span className="absolute top-1 right-1 w-2 h-2 bg-[#d411d4] rounded-full"></span>
+                            </Link>
+                        )}
                         {/* Mobile Menu Trigger */}
                         <button className="md:hidden p-2 hover:bg-white/10 rounded-full transition-colors text-white">
                             <span className="material-symbols-outlined">menu</span>

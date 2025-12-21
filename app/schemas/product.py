@@ -53,6 +53,7 @@ class ProductRead(ProductBase):
     colors: list[str] = []
     is_sale: bool = False
     sale_price: float | None = None
+    variants: list[ProductVariantRead] = []
 
     model_config = {"from_attributes": True}
 

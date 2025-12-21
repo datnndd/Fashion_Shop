@@ -7,7 +7,7 @@ from app.db.session import get_session
 from app.deps import get_admin_user
 from app.models.catalog import Category, Product, ProductVariant
 from app.models.user import User
-from app.schemas.category import CategoryCreate, CategoryRead
+from app.schemas.category import CategoryCreate, CategoryRead, CategoryUpdate
 from app.schemas.product import ProductCreate, ProductCreateWithVariants, ProductRead, ProductReadWithDetails, ProductUpdate
 from app.schemas.variant import ProductVariantCreate, ProductVariantRead
 
@@ -15,11 +15,17 @@ router = APIRouter(prefix="/catalog", tags=["catalog"])
 
 
 @router.post("/categories", response_model=CategoryRead, status_code=status.HTTP_201_CREATED)
-async def create_category(payload: CategoryCreate, session: AsyncSession = Depends(get_session)) -> CategoryRead:
+async def create_category(
+    payload: CategoryCreate, 
+    session: AsyncSession = Depends(get_session),
+    admin: User = Depends(get_admin_user),
+) -> CategoryRead:
+    """Create a new category. Requires admin role."""
     category = Category(
         name=payload.name,
         slug=payload.slug,
         description=payload.description,
+        image=payload.image,
         parent_id=payload.parent_id,
         is_active=payload.is_active,
     )
@@ -40,6 +46,63 @@ async def list_categories(
     result = await session.scalars(query)
     return list(result.all())
 
+
+@router.get("/categories/{category_id}", response_model=CategoryRead)
+async def get_category(
+    category_id: int,
+    session: AsyncSession = Depends(get_session),
+) -> CategoryRead:
+    """Get a single category by ID."""
+    category = await session.get(Category, category_id)
+    if not category:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Category not found")
+    return category
+
+
+@router.put("/categories/{category_id}", response_model=CategoryRead)
+async def update_category(
+    category_id: int,
+    payload: CategoryUpdate,
+    session: AsyncSession = Depends(get_session),
+    admin: User = Depends(get_admin_user),
+) -> CategoryRead:
+    """Update a category. Requires admin role."""
+    category = await session.get(Category, category_id)
+    if not category:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Category not found")
+    
+    update_data = payload.model_dump(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(category, key, value)
+    
+    await session.commit()
+    await session.refresh(category)
+    return category
+
+
+@router.delete("/categories/{category_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_category(
+    category_id: int,
+    session: AsyncSession = Depends(get_session),
+    admin: User = Depends(get_admin_user),
+) -> None:
+    """Delete a category. Requires admin role."""
+    category = await session.get(Category, category_id)
+    if not category:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Category not found")
+    
+    # Check if category has products
+    product_count = await session.scalar(
+        select(func.count(Product.product_id)).where(Product.category_id == category_id)
+    )
+    if product_count and product_count > 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, 
+            detail=f"Cannot delete category with {product_count} products. Remove products first."
+        )
+    
+    await session.delete(category)
+    await session.commit()
 
 @router.post("/products", response_model=ProductReadWithDetails, status_code=status.HTTP_201_CREATED)
 async def create_product(

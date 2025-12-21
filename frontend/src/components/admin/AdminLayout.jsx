@@ -8,7 +8,7 @@ const AdminLayout = () => {
     const navItems = [
         { path: '/admin/dashboard', icon: 'dashboard', label: 'Dashboard', exact: true },
         { path: '/admin/products', icon: 'inventory_2', label: 'Products' },
-
+        { path: '/admin/categories', icon: 'category', label: 'Categories' },
         { path: '/admin/orders', icon: 'shopping_cart', label: 'Orders' },
         { path: '/admin/users', icon: 'group', label: 'Users' },
         { path: '/admin/reviews', icon: 'reviews', label: 'Reviews' },
@@ -66,46 +66,9 @@ const AdminLayout = () => {
 
             {/* Main content */}
             <div className={`transition-all ${sidebarOpen ? 'lg:ml-[260px]' : 'ml-0'}`}>
-                {/* Header */}
-                <header className="sticky top-0 z-30 h-16 bg-[#0f0f1a]/80 backdrop-blur-md border-b border-white/10 flex items-center justify-between px-6">
-                    <div className="flex items-center gap-4">
-                        <button
-                            onClick={() => setSidebarOpen(!sidebarOpen)}
-                            className="text-gray-400 hover:text-white transition-colors"
-                        >
-                            <span className="material-symbols-outlined">menu</span>
-                        </button>
-                        {/* Search */}
-                        <div className="hidden md:flex items-center gap-2 bg-white/5 rounded-lg px-4 py-2 w-80">
-                            <span className="material-symbols-outlined text-gray-400 text-[20px]">search</span>
-                            <input
-                                type="text"
-                                placeholder="Search..."
-                                className="bg-transparent border-none outline-none text-sm w-full text-white placeholder-gray-500"
-                            />
-                        </div>
-                    </div>
+                {/* Header removed as per request */}
 
-                    <div className="flex items-center gap-4">
-                        {/* Notifications */}
-                        <button className="relative text-gray-400 hover:text-white transition-colors">
-                            <span className="material-symbols-outlined">notifications</span>
-                            <span className="absolute -top-1 -right-1 w-4 h-4 bg-[#d411d4] rounded-full text-[10px] flex items-center justify-center text-white font-bold">3</span>
-                        </button>
-
-                        {/* User menu */}
-                        <div className="flex items-center gap-3 cursor-pointer hover:bg-white/5 rounded-lg px-3 py-2 transition-colors">
-                            <div className="w-8 h-8 bg-gradient-to-br from-[#d411d4] to-purple-600 rounded-full flex items-center justify-center text-sm font-bold">
-                                A
-                            </div>
-                            <div className="hidden md:block">
-                                <p className="text-sm font-medium">Admin</p>
-                                <p className="text-xs text-gray-400">admin@basiccolor.com</p>
-                            </div>
-                            <span className="material-symbols-outlined text-gray-400 text-[18px]">expand_more</span>
-                        </div>
-                    </div>
-                </header>
+                {/* Page content */}
 
                 {/* Page content */}
                 <main className="p-6">

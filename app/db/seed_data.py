@@ -12,13 +12,43 @@ from app.models.catalog import Category, Product, ProductVariant
 from app.models.user import User
 
 async def seed_categories(session: AsyncSession) -> list[Category]:
-    """Create sample categories."""
+    """Create sample categories with images."""
     categories = [
-        Category(name="T-Shirts", slug="t-shirts", description="Classic and comfortable tees", is_active=True),
-        Category(name="Hoodies", slug="hoodies", description="Warm and cozy hoodies", is_active=True),
-        Category(name="Outerwear", slug="outerwear", description="Jackets and coats", is_active=True),
-        Category(name="Shirts", slug="shirts", description="Casual and formal shirts", is_active=True),
-        Category(name="Pants", slug="pants", description="Trousers and jeans", is_active=True),
+        Category(
+            name="T-Shirts",
+            slug="t-shirts",
+            description="Classic and comfortable tees for everyday wear",
+            image="https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=800",
+            is_active=True
+        ),
+        Category(
+            name="Hoodies",
+            slug="hoodies",
+            description="Warm and cozy hoodies for cold days",
+            image="https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=800",
+            is_active=True
+        ),
+        Category(
+            name="Outerwear",
+            slug="outerwear",
+            description="Stylish jackets and coats",
+            image="https://images.unsplash.com/photo-1551028719-00167b16eac5?w=800",
+            is_active=True
+        ),
+        Category(
+            name="Shirts",
+            slug="shirts",
+            description="Casual and formal shirts",
+            image="https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=800",
+            is_active=True
+        ),
+        Category(
+            name="Pants",
+            slug="pants",
+            description="Trousers, jeans and shorts",
+            image="https://images.unsplash.com/photo-1473966968600-fa801b869a1a?w=800",
+            is_active=True
+        ),
     ]
     
     for cat in categories:
@@ -28,88 +58,183 @@ async def seed_categories(session: AsyncSession) -> list[Category]:
 
 
 async def seed_products(session: AsyncSession, categories: list[Category]) -> list[Product]:
-    """Create sample products."""
+    """Create sample products with images."""
     products_data = [
+        # T-Shirts (3 products)
         {
             "category": "T-Shirts",
             "name": "Neon Oversized Knit",
             "slug": "neon-oversized-knit",
             "description": "A bold statement piece featuring our signature neon pink. Made from heavyweight cotton blend for a premium feel.",
-            "base_price": Decimal("3000000"),
-            "thumbnail": "https://lh3.googleusercontent.com/aida-public/AB6AXuACQ5EPOfI4E08g7BONgVWum0GxW27TsRFDHaEMOjy05wisQShNoj8SppeNZXiyF0ky_NxJG5N5stwqwisK7VIfc0Nglmf2DDW4NKrw3I2tviR0_YNn3UL1t7sHRYvguNiy7D-FFzMHHLriFzWzyPkqMqtmqkxRtNIqVXdGC8ixYkhNUxWQwu4romhKp0xmHELv1TJcbOCDgdSevZ-smmzgB9dxSGtmNz90QshRGhgICEfAfREUoLQTivRAbkAjLNKk5BS3VSz0E-A",
+            "base_price": Decimal("599000"),
+            "thumbnail": "https://images.unsplash.com/photo-1618354691373-d851c5c3a990?w=600",
+            "images": [
+                "https://images.unsplash.com/photo-1618354691373-d851c5c3a990?w=800",
+                "https://images.unsplash.com/photo-1618354691438-25bc04584c23?w=800"
+            ],
             "is_new": True,
             "discount_percent": 0,
             "badge": "Best Seller",
         },
         {
             "category": "T-Shirts",
-            "name": "Urban Tee - Magenta",
-            "slug": "urban-tee-magenta",
-            "description": "Sleek and versatile. 100% organic cotton for everyday comfort.",
-            "base_price": Decimal("1125000"),
-            "thumbnail": "https://lh3.googleusercontent.com/aida-public/AB6AXuCcl_O2s7tEkvre7Sk7DnL5bWi0OI5jrNoYqaj2Py2X40U4tEp9N2t4H8f_0A6H2-OHZEvlX98RgVffy3DNEjGMnmgzulsw5DKssXXNPbNvtGENMyE4iPgHzdkJP4P9yNUOSmmcVLUH3DgL1c-tD9AOIWTMiQtuOZ9Sca74L92wpFAQNtw8C_unlCUuzB390QIBcuRjR58WjbR9q8ofboBinXPdUsW_cgNwqT8VAiR6S0UXzdqy3M_FwMvb0HgjzKCvvi5ImvyAeCk",
+            "name": "Urban Street Tee",
+            "slug": "urban-street-tee",
+            "description": "Sleek and versatile. 100% organic cotton for everyday comfort with street style edge.",
+            "base_price": Decimal("449000"),
+            "thumbnail": "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=600",
+            "images": [
+                "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=800",
+                "https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?w=800"
+            ],
             "is_new": False,
-            "discount_percent": 0,
+            "discount_percent": 15,
         },
         {
-            "category": "Outerwear",
-            "name": "Structured Blazer",
-            "slug": "structured-blazer",
-            "description": "Elevate your look with this tailored blazer featuring satin lining.",
-            "base_price": Decimal("4625000"),
-            "thumbnail": "https://lh3.googleusercontent.com/aida-public/AB6AXuAia8J0xT8QeGNQHqVJLHz1JYjZ01gfWwJRRJmRpocS3i0zEg4ik8Fwe_XxGwhOCap1nc0u_Yshg_upKLSXMDiE3JEP7U5sbdDH887s69kqvu-WhNaSvDfTLM145Kz_GtHMf_4i_PagFagCq8lgHyAjnP0C9SsPLGWg4bxtOHyagD1T5G0vta53CV6_0Kt5FgamFud8EL2jHmNc4IuklJWqgbiDqchGlu2rBzwJmUM5KQcRYR-zSeUh3bLomqMCzu027rBalTZ0raM",
+            "category": "T-Shirts",
+            "name": "Graphic Print Tee",
+            "slug": "graphic-print-tee",
+            "description": "Express yourself with our artistic graphic tee. Premium cotton with vibrant print.",
+            "base_price": Decimal("399000"),
+            "thumbnail": "https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=600",
+            "images": [
+                "https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=800"
+            ],
             "is_new": True,
             "discount_percent": 0,
         },
-        {
-            "category": "Outerwear",
-            "name": "Tech Fleece Zip",
-            "slug": "tech-fleece-zip",
-            "description": "Water resistant tech fleece for active lifestyles.",
-            "base_price": Decimal("2375000"),
-            "thumbnail": "https://lh3.googleusercontent.com/aida-public/AB6AXuCxyKgVtVY0kT___pDAnWxcUQa6iNJv_Kg2Xjf7V-DnFkYp3gNpVqe_6if0V9W1neB4piDgsWd3uLUdnnUlipdGoiPEUiYeIiGxwKD-Ud7OeODcnLqJoFUids5xaTuL_d47u9EJdxV7sCRXBMipWz4vFPSGmLmASschqVUJ5KZePcUkBi50jNd1vFEpI_uLe5GRzKJ3rUvndO3Z1BBstI8ehFvwqOZnK7aL9QjuGU19pQm4GaT0B9XpNuMh2N3kECcCMEy80ljTFtM",
-            "is_new": False,
-            "discount_percent": 0,
-        },
+        
+        # Hoodies (3 products)
         {
             "category": "Hoodies",
-            "name": "Core Hoodie",
-            "slug": "core-hoodie",
-            "description": "Fleece lined hoodie for maximum comfort. On sale now!",
-            "base_price": Decimal("1875000"),
-            "thumbnail": "https://lh3.googleusercontent.com/aida-public/AB6AXuD7XZij8-Dh0yB6Dle4ettsozJSEuakLzxip8Sg2fm_nFW78gzA3_FB4jB1HPmRJOGwfvq_rvvV4_J7lmPypVP3PPJCBEnSDA0AAR5tPQSWcb38D9opdCXQf3fuwg6XbCPkndDLQVUhT-FaFHD4uXuIPjmcFJSosQy1CVEcCwEiMjfszb8rIbNjI8z04qE8n7joYkkksA4CCusO82A9ertkGTiuAweqVmXNWhS0hBTZWjxdYZ5-UbJlGm6aXnROQdN8F5f3H83P08c",
+            "name": "Core Fleece Hoodie",
+            "slug": "core-fleece-hoodie",
+            "description": "Fleece lined hoodie for maximum comfort. Cozy, warm and perfect for layering.",
+            "base_price": Decimal("899000"),
+            "thumbnail": "https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=600",
+            "images": [
+                "https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=800",
+                "https://images.unsplash.com/photo-1578681994506-b8f463449011?w=800"
+            ],
             "is_new": False,
-            "discount_percent": 25,
-        },
-        {
-            "category": "Shirts",
-            "name": "Summer Linen Shirt",
-            "slug": "summer-linen-shirt",
-            "description": "Breathable linen fabric perfect for warm weather.",
-            "base_price": Decimal("2000000"),
-            "thumbnail": "https://lh3.googleusercontent.com/aida-public/AB6AXuA5IMou7SnWz0eActU9SSPJFBa5_-s-uD_U3qZc-c8ieuHqb-WGIyetCo37sR8GvBOOvtVNYuCFlHUw9m7iGNc3d2sbSTM4Op5-sWyOD_gszmNlmFYFCqEql5K6wh0qXTdtUH_WCdcV0Ftr-KJfvgwecIOenLuzlX7qA8OLBOmp-8CXBsWMxD_SiEVkHOqsX0gS-eLQ3FiH2yUd-Fmdh8ksUJWcktI1owhktDl-jh4HLLvrdEzsM1Dv8R7lo_4FUaZGV-wUuslQqL4",
-            "is_new": False,
-            "discount_percent": 0,
+            "discount_percent": 20,
+            "badge": "Sale",
         },
         {
             "category": "Hoodies",
             "name": "Essential Pullover",
             "slug": "essential-pullover",
-            "description": "Your everyday go-to hoodie. Soft, comfortable, and stylish.",
-            "base_price": Decimal("1625000"),
-            "thumbnail": "https://images.unsplash.com/photo-1556821840-3a63f95609a7?w=400",
+            "description": "Your everyday go-to hoodie. Soft, comfortable, and stylish with kangaroo pocket.",
+            "base_price": Decimal("749000"),
+            "thumbnail": "https://images.unsplash.com/photo-1509942774463-acf339cf87d5?w=600",
+            "images": [
+                "https://images.unsplash.com/photo-1509942774463-acf339cf87d5?w=800"
+            ],
             "is_new": True,
             "discount_percent": 0,
         },
         {
+            "category": "Hoodies",
+            "name": "Zip-Up Tech Hoodie",
+            "slug": "zip-up-tech-hoodie",
+            "description": "Modern tech fabric with moisture-wicking properties. Perfect for active lifestyle.",
+            "base_price": Decimal("999000"),
+            "thumbnail": "https://images.unsplash.com/photo-1620799140408-edc6dcb6d633?w=600",
+            "images": [
+                "https://images.unsplash.com/photo-1620799140408-edc6dcb6d633?w=800"
+            ],
+            "is_new": False,
+            "discount_percent": 0,
+        },
+        
+        # Outerwear (2 products)
+        {
+            "category": "Outerwear",
+            "name": "Structured Blazer",
+            "slug": "structured-blazer",
+            "description": "Elevate your look with this tailored blazer featuring satin lining and modern fit.",
+            "base_price": Decimal("1599000"),
+            "thumbnail": "https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=600",
+            "images": [
+                "https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=800",
+                "https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=800"
+            ],
+            "is_new": True,
+            "discount_percent": 0,
+            "badge": "Premium",
+        },
+        {
+            "category": "Outerwear",
+            "name": "Tech Fleece Jacket",
+            "slug": "tech-fleece-jacket",
+            "description": "Water resistant tech fleece for active lifestyles. Lightweight yet warm.",
+            "base_price": Decimal("1299000"),
+            "thumbnail": "https://images.unsplash.com/photo-1551028719-00167b16eac5?w=600",
+            "images": [
+                "https://images.unsplash.com/photo-1551028719-00167b16eac5?w=800"
+            ],
+            "is_new": False,
+            "discount_percent": 10,
+        },
+        
+        # Shirts (2 products)
+        {
+            "category": "Shirts",
+            "name": "Summer Linen Shirt",
+            "slug": "summer-linen-shirt",
+            "description": "Breathable linen fabric perfect for warm weather. Relaxed fit with classic collar.",
+            "base_price": Decimal("699000"),
+            "thumbnail": "https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=600",
+            "images": [
+                "https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=800",
+                "https://images.unsplash.com/photo-1589310243389-96a5483213a8?w=800"
+            ],
+            "is_new": False,
+            "discount_percent": 0,
+        },
+        {
+            "category": "Shirts",
+            "name": "Oxford Button-Down",
+            "slug": "oxford-button-down",
+            "description": "Classic oxford cotton shirt, versatile for both casual and formal occasions.",
+            "base_price": Decimal("799000"),
+            "thumbnail": "https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=600",
+            "images": [
+                "https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?w=800"
+            ],
+            "is_new": True,
+            "discount_percent": 0,
+            "badge": "New Arrival",
+        },
+        
+        # Pants (2 products)
+        {
             "category": "Pants",
             "name": "Slim Fit Chinos",
             "slug": "slim-fit-chinos",
-            "description": "Versatile chinos that work for any occasion.",
-            "base_price": Decimal("2375000"),
-            "thumbnail": "https://images.unsplash.com/photo-1473966968600-fa801b869a1a?w=400",
+            "description": "Versatile chinos that work for any occasion. Comfortable stretch fabric.",
+            "base_price": Decimal("799000"),
+            "thumbnail": "https://images.unsplash.com/photo-1473966968600-fa801b869a1a?w=600",
+            "images": [
+                "https://images.unsplash.com/photo-1473966968600-fa801b869a1a?w=800"
+            ],
             "is_new": False,
-            "discount_percent": 20,
+            "discount_percent": 25,
+            "badge": "Hot Deal",
+        },
+        {
+            "category": "Pants",
+            "name": "Relaxed Denim Jeans",
+            "slug": "relaxed-denim-jeans",
+            "description": "Classic denim jeans with relaxed fit. Durable and timeless style.",
+            "base_price": Decimal("899000"),
+            "thumbnail": "https://images.unsplash.com/photo-1542272454315-4c01d7abdf4a?w=600",
+            "images": [
+                "https://images.unsplash.com/photo-1542272454315-4c01d7abdf4a?w=800",
+                "https://images.unsplash.com/photo-1541099649105-f69ad21f3246?w=800"
+            ],
+            "is_new": True,
+            "discount_percent": 0,
         },
     ]
     
@@ -133,25 +258,39 @@ async def seed_products(session: AsyncSession, categories: list[Category]) -> li
 async def seed_variants(session: AsyncSession, products: list[Product]) -> list[ProductVariant]:
     """Create product variants with colors and sizes."""
     colors = [
-        {"name": "Pink", "hex": "#d411d4"},
-        {"name": "Black", "hex": "#000000"},
+        {"name": "Black", "hex": "#1a1a1a"},
         {"name": "White", "hex": "#ffffff"},
-        {"name": "Blue", "hex": "#0ea5e9"},
-        {"name": "Green", "hex": "#22c55e"},
+        {"name": "Navy", "hex": "#1e3a5f"},
+        {"name": "Gray", "hex": "#6b7280"},
+        {"name": "Pink", "hex": "#ec4899"},
     ]
     sizes = ["S", "M", "L", "XL"]
     
+    # Color-specific images for variants
+    color_images = {
+        "Black": "https://images.unsplash.com/photo-1618354691373-d851c5c3a990?w=400",
+        "White": "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=400",
+        "Navy": "https://images.unsplash.com/photo-1583743814966-8936f5b7be1a?w=400",
+        "Gray": "https://images.unsplash.com/photo-1576566588028-4147f3842f27?w=400",
+        "Pink": "https://images.unsplash.com/photo-1618354691438-25bc04584c23?w=400",
+    }
+    
     variants = []
     for product in products:
-        # Each product gets 2-3 color variants
+        # Each product gets 3 color variants
         for i, color in enumerate(colors[:3]):
             for size in sizes:
                 variant = ProductVariant(
                     product_id=product.product_id,
                     sku=f"{product.slug}-{color['name'].lower()}-{size.lower()}",
-                    attributes={"color": color["hex"], "color_name": color["name"], "size": size},
+                    attributes={
+                        "color": color["hex"],
+                        "color_name": color["name"],
+                        "size": size
+                    },
                     price=product.base_price,
                     stock=50 - (i * 10),
+                    images=[color_images.get(color["name"], product.thumbnail)],
                     is_active=True,
                 )
                 session.add(variant)
@@ -159,9 +298,6 @@ async def seed_variants(session: AsyncSession, products: list[Product]) -> list[
     
     await session.flush()
     return variants
-
-
-
 
 
 async def seed_users(session: AsyncSession) -> list[User]:
@@ -173,16 +309,16 @@ async def seed_users(session: AsyncSession) -> list[User]:
         User(
             name="Admin User",
             email="admin@basiccolor.com",
-            password_hash=hash_password("admin123"),
+            password_hash=hash_password("Admin@123"),
             role="manager",
             is_active=True
         ),
         # Regular customers
-        User(name="Sarah Mitchell", email="sarah@email.com", password_hash=hash_password("password123"), is_active=True),
-        User(name="James Kennedy", email="james@email.com", password_hash=hash_password("password123"), is_active=True),
-        User(name="Emily Rodriguez", email="emily@email.com", password_hash=hash_password("password123"), is_active=True),
-        User(name="Marcus Thompson", email="marcus@email.com", password_hash=hash_password("password123"), is_active=True),
-        User(name="Alex Parker", email="alex@email.com", password_hash=hash_password("password123"), is_active=True),
+        User(name="Sarah Mitchell", email="sarah@email.com", password_hash=hash_password("Password@123"), is_active=True),
+        User(name="James Kennedy", email="james@email.com", password_hash=hash_password("Password@123"), is_active=True),
+        User(name="Emily Rodriguez", email="emily@email.com", password_hash=hash_password("Password@123"), is_active=True),
+        User(name="Marcus Thompson", email="marcus@email.com", password_hash=hash_password("Password@123"), is_active=True),
+        User(name="Alex Parker", email="alex@email.com", password_hash=hash_password("Password@123"), is_active=True),
     ]
     
     for user in users:
@@ -211,7 +347,6 @@ async def seed_database():
         
         variants = await seed_variants(session, products)
         print(f"✓ Created {len(variants)} variants")
-        
 
         
         users = await seed_users(session)

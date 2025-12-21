@@ -74,6 +74,17 @@ const AdminProducts = () => {
 
     const openEditModal = (product) => {
         setSelectedProduct(product);
+
+        // Transform variants from API format to form format
+        const formattedVariants = (product.variants || []).map(v => ({
+            sku: v.sku || '',
+            size: v.attributes?.size || '',
+            color: v.attributes?.color || '',
+            price: v.price || '',
+            stock: v.stock || 0,
+            images: v.images || []
+        }));
+
         setFormData({
             name: product.name || '',
             slug: product.slug || '',
@@ -85,7 +96,7 @@ const AdminProducts = () => {
             discount_percent: product.discount_percent || 0,
             badge: product.badge || '',
             is_published: product.is_published ?? true,
-            variants: product.variants || []
+            variants: formattedVariants
         });
         setShowModal(true);
         setError('');
@@ -651,72 +662,107 @@ const AdminProducts = () => {
                                                         Remove
                                                     </button>
                                                 </div>
-                                                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                    {/* Row 1: SKU and Stock */}
                                                     <div>
-                                                        <label className="block text-xs text-gray-500 mb-1">SKU</label>
+                                                        <label className="block text-xs text-gray-400 mb-2 font-medium">SKU</label>
                                                         <input
                                                             type="text"
                                                             value={variant.sku}
                                                             onChange={(e) => handleVariantChange(index, 'sku', e.target.value)}
                                                             placeholder={generateSku(index)}
-                                                            className="w-full bg-white/5 rounded px-3 py-2 text-sm border border-white/10 focus:border-[#d411d4] outline-none"
+                                                            className="w-full bg-[#0f0f1a] rounded-lg px-4 py-2.5 text-sm border border-white/10 focus:border-[#d411d4] outline-none"
                                                         />
                                                     </div>
-                                                    <div>
-                                                        <label className="block text-xs text-gray-500 mb-1">Size</label>
-                                                        <select
-                                                            value={variant.size}
-                                                            onChange={(e) => handleVariantChange(index, 'size', e.target.value)}
-                                                            className="w-full bg-white/5 rounded px-3 py-2 text-sm border border-white/10 focus:border-[#d411d4] outline-none"
-                                                        >
-                                                            <option value="">Select</option>
-                                                            <option value="XS">XS</option>
-                                                            <option value="S">S</option>
-                                                            <option value="M">M</option>
-                                                            <option value="L">L</option>
-                                                            <option value="XL">XL</option>
-                                                            <option value="XXL">XXL</option>
-                                                        </select>
+                                                    <div className="grid grid-cols-2 gap-3">
+                                                        <div>
+                                                            <label className="block text-xs text-gray-400 mb-2 font-medium">Price</label>
+                                                            <input
+                                                                type="number"
+                                                                value={variant.price}
+                                                                onChange={(e) => handleVariantChange(index, 'price', e.target.value)}
+                                                                placeholder={formData.base_price || '0'}
+                                                                className="w-full bg-[#0f0f1a] rounded-lg px-4 py-2.5 text-sm border border-white/10 focus:border-[#d411d4] outline-none"
+                                                            />
+                                                        </div>
+                                                        <div>
+                                                            <label className="block text-xs text-gray-400 mb-2 font-medium">Stock</label>
+                                                            <input
+                                                                type="number"
+                                                                value={variant.stock}
+                                                                onChange={(e) => handleVariantChange(index, 'stock', e.target.value)}
+                                                                placeholder="0"
+                                                                min="0"
+                                                                className="w-full bg-[#0f0f1a] rounded-lg px-4 py-2.5 text-sm border border-white/10 focus:border-[#d411d4] outline-none"
+                                                            />
+                                                        </div>
                                                     </div>
-                                                    <div>
-                                                        <label className="block text-xs text-gray-500 mb-1">Color</label>
-                                                        <div className="flex gap-2">
+                                                </div>
+
+                                                {/* Row 2: Size Buttons */}
+                                                <div className="mt-4">
+                                                    <label className="block text-xs text-gray-400 mb-2 font-medium">Size</label>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {['XS', 'S', 'M', 'L', 'XL', 'XXL'].map((size) => (
+                                                            <button
+                                                                key={size}
+                                                                type="button"
+                                                                onClick={() => handleVariantChange(index, 'size', size)}
+                                                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${variant.size === size
+                                                                        ? 'bg-[#d411d4] text-white'
+                                                                        : 'bg-[#0f0f1a] text-gray-400 hover:bg-white/10 hover:text-white border border-white/10'
+                                                                    }`}
+                                                            >
+                                                                {size}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                </div>
+
+                                                {/* Row 3: Color Picker */}
+                                                <div className="mt-4">
+                                                    <label className="block text-xs text-gray-400 mb-2 font-medium">Color</label>
+                                                    <div className="flex flex-wrap items-center gap-3">
+                                                        {/* Preset colors */}
+                                                        {[
+                                                            { name: 'Black', hex: '#1a1a1a' },
+                                                            { name: 'White', hex: '#ffffff' },
+                                                            { name: 'Navy', hex: '#1e3a5f' },
+                                                            { name: 'Gray', hex: '#6b7280' },
+                                                            { name: 'Pink', hex: '#ec4899' },
+                                                            { name: 'Red', hex: '#ef4444' },
+                                                            { name: 'Blue', hex: '#3b82f6' },
+                                                            { name: 'Green', hex: '#22c55e' },
+                                                        ].map((color) => (
+                                                            <button
+                                                                key={color.hex}
+                                                                type="button"
+                                                                onClick={() => handleVariantChange(index, 'color', color.hex)}
+                                                                className={`w-8 h-8 rounded-full border-2 transition-all ${variant.color === color.hex
+                                                                        ? 'border-[#d411d4] scale-110 ring-2 ring-[#d411d4]/50'
+                                                                        : 'border-white/20 hover:border-white/40'
+                                                                    }`}
+                                                                style={{ backgroundColor: color.hex }}
+                                                                title={color.name}
+                                                            />
+                                                        ))}
+
+                                                        {/* Custom color picker */}
+                                                        <div className="flex items-center gap-2 ml-2 pl-3 border-l border-white/10">
                                                             <input
                                                                 type="color"
                                                                 value={variant.color || '#ffffff'}
                                                                 onChange={(e) => handleVariantChange(index, 'color', e.target.value)}
-                                                                className="w-10 h-[38px] bg-transparent border border-white/10 rounded cursor-pointer"
+                                                                className="w-8 h-8 rounded-lg cursor-pointer border-0 bg-transparent"
                                                             />
                                                             <input
                                                                 type="text"
-                                                                value={variant.color}
+                                                                value={variant.color || ''}
                                                                 onChange={(e) => handleVariantChange(index, 'color', e.target.value)}
-                                                                placeholder="#ffffff"
-                                                                className="flex-1 bg-white/5 rounded px-3 py-2 text-sm border border-white/10 focus:border-[#d411d4] outline-none"
+                                                                placeholder="#000000"
+                                                                className="w-24 bg-[#0f0f1a] rounded-lg px-3 py-2 text-sm border border-white/10 focus:border-[#d411d4] outline-none font-mono"
                                                             />
                                                         </div>
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-xs text-gray-500 mb-1">Price</label>
-                                                        <input
-                                                            type="number"
-                                                            value={variant.price}
-                                                            onChange={(e) => handleVariantChange(index, 'price', e.target.value)}
-                                                            placeholder={formData.base_price || '0.00'}
-                                                            step="0.01"
-                                                            className="w-full bg-white/5 rounded px-3 py-2 text-sm border border-white/10 focus:border-[#d411d4] outline-none"
-                                                        />
-                                                    </div>
-                                                    <div>
-                                                        <label className="block text-xs text-gray-500 mb-1">Stock</label>
-                                                        <input
-                                                            type="number"
-                                                            value={variant.stock}
-                                                            onChange={(e) => handleVariantChange(index, 'stock', e.target.value)}
-                                                            placeholder="0"
-                                                            min="0"
-                                                            className="w-full bg-white/5 rounded px-3 py-2 text-sm border border-white/10 focus:border-[#d411d4] outline-none"
-                                                        />
                                                     </div>
                                                 </div>
                                                 {/* Variant Images */}

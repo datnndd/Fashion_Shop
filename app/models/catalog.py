@@ -11,6 +11,7 @@ class Category(Base):
     name: Mapped[str] = mapped_column(String(255))
     slug: Mapped[str] = mapped_column(String(255), unique=True, index=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    image: Mapped[str | None] = mapped_column(String(500), nullable=True)
     parent_id: Mapped[int | None] = mapped_column(ForeignKey("categories.category_id"), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 

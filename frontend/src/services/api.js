@@ -121,6 +121,46 @@ export const categoriesAPI = {
         const params = isActive !== null ? `?is_active=${isActive}` : '';
         return fetchAPI(`/catalog/categories${params}`);
     },
+
+    /**
+     * Get a single category
+     */
+    get: (categoryId) => fetchAPI(`/catalog/categories/${categoryId}`),
+
+    /**
+     * Create a new category (admin only)
+     */
+    create: (data) => {
+        const token = localStorage.getItem('token');
+        return fetchAPI('/catalog/categories', {
+            method: 'POST',
+            body: JSON.stringify(data),
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+    },
+
+    /**
+     * Update a category (admin only)
+     */
+    update: (categoryId, data) => {
+        const token = localStorage.getItem('token');
+        return fetchAPI(`/catalog/categories/${categoryId}`, {
+            method: 'PUT',
+            body: JSON.stringify(data),
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+    },
+
+    /**
+     * Delete a category (admin only)
+     */
+    delete: (categoryId) => {
+        const token = localStorage.getItem('token');
+        return fetchAPI(`/catalog/categories/${categoryId}`, {
+            method: 'DELETE',
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+    },
 };
 
 // Reviews API
