@@ -6,7 +6,7 @@ const AdminLayout = () => {
     const location = useLocation();
 
     const navItems = [
-        { path: '/admin', icon: 'dashboard', label: 'Dashboard', exact: true },
+        { path: '/admin/dashboard', icon: 'dashboard', label: 'Dashboard', exact: true },
         { path: '/admin/products', icon: 'inventory_2', label: 'Products' },
 
         { path: '/admin/orders', icon: 'shopping_cart', label: 'Orders' },

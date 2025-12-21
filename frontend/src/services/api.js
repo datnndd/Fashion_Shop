@@ -399,16 +399,76 @@ export const adminAPI = {
     getRecentOrders: (limit = 5) => fetchAPI(`/admin/orders/recent?limit=${limit}`),
 };
 
+// Dashboard API
+export const dashboardAPI = {
+    /**
+     * Get dashboard statistics
+     */
+    getStats: (period = 'day', startDate = null, endDate = null) => {
+        const token = localStorage.getItem('token');
+        const params = new URLSearchParams({ period });
+        if (startDate) params.append('start_date', startDate);
+        if (endDate) params.append('end_date', endDate);
+        return fetchAPI(`/dashboard/stats?${params.toString()}`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+    },
+
+    /**
+     * Export to Excel
+     */
+    exportExcel: async (period = 'day', startDate = null, endDate = null) => {
+        const token = localStorage.getItem('token');
+        const params = new URLSearchParams({ period });
+        if (startDate) params.append('start_date', startDate);
+        if (endDate) params.append('end_date', endDate);
+        const response = await fetch(`${API_BASE}/dashboard/export/excel?${params.toString()}`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+        if (!response.ok) throw new Error('Export failed');
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `sales_report_${period}_${startDate || 'default'}_${endDate || 'default'}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+    },
+
+    /**
+     * Export to PDF
+     */
+    exportPdf: async (period = 'day', startDate = null, endDate = null) => {
+        const token = localStorage.getItem('token');
+        const params = new URLSearchParams({ period });
+        if (startDate) params.append('start_date', startDate);
+        if (endDate) params.append('end_date', endDate);
+        const response = await fetch(`${API_BASE}/dashboard/export/pdf?${params.toString()}`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+        if (!response.ok) throw new Error('Export failed');
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `sales_report_${period}_${startDate || 'default'}_${endDate || 'default'}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+    }
+};
+
 // Export a default API object for convenience
 const api = {
     products: productsAPI,
-
     categories: categoriesAPI,
     reviews: reviewsAPI,
     users: usersAPI,
     orders: ordersAPI,
     auth: authAPI,
     admin: adminAPI,
+    dashboard: dashboardAPI,
     addresses: addressesAPI,
     locations: locationsAPI,
 };

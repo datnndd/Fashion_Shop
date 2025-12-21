@@ -1,84 +1,183 @@
 import { useState, useEffect } from 'react';
 import { formatPriceVND } from '../../utils/currency';
 import { Link } from 'react-router-dom';
-import { productsAPI, categoriesAPI, usersAPI } from '../../services/api';
+import { dashboardAPI } from '../../services/api';
 
 const AdminDashboard = () => {
     const [loading, setLoading] = useState(true);
-    const [stats, setStats] = useState({
-        products: 0,
-        categories: 0,
-        customers: 0
-    });
-    const [topProducts, setTopProducts] = useState([]);
+    const [period, setPeriod] = useState('day');
+    // Default to current date/month/year
+    const today = new Date();
+    const getDefaultDate = (p) => {
+        if (p === 'day') return today.toISOString().split('T')[0]; // YYYY-MM-DD
+        if (p === 'month') return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`; // YYYY-MM
+        return today.getFullYear().toString(); // YYYY
+    };
+    const [selectedDate, setSelectedDate] = useState(getDefaultDate('day'));
+    const [dashboardData, setDashboardData] = useState(null);
+    const [exportLoading, setExportLoading] = useState(false);
+
+    // Update selectedDate when period changes
+    useEffect(() => {
+        setSelectedDate(getDefaultDate(period));
+    }, [period]);
 
     useEffect(() => {
-        const fetchData = async () => {
+        const fetchDashboardData = async () => {
             try {
                 setLoading(true);
-                const [products, categories] = await Promise.all([
-                    productsAPI.list({ limit: 100 }),
-                    categoriesAPI.list()
-                ]);
-
-                setStats({
-                    products: products.length,
-                    categories: categories.length,
-                    customers: 0 // Will be fetched when users API is ready
-                });
-
-                // Get top 3 products
-                setTopProducts(products.slice(0, 3));
+                const data = await dashboardAPI.getStats(period, selectedDate || null, null);
+                setDashboardData(data);
             } catch (error) {
                 console.error('Failed to fetch dashboard data:', error);
             } finally {
                 setLoading(false);
             }
         };
-        fetchData();
-    }, []);
+        fetchDashboardData();
+    }, [period, selectedDate]);
 
-    // Stats cards data
-    const statsCards = [
-        { label: 'Total Revenue', value: formatPriceVND(614000000), change: '+12.5%', positive: true, icon: 'payments' },
-        { label: 'Orders', value: '156', change: '+8.2%', positive: true, icon: 'shopping_bag' },
-        { label: 'Products', value: stats.products.toString(), change: `${stats.products}`, positive: true, icon: 'inventory_2' },
-        { label: 'Categories', value: (stats.categories || 0).toString(), change: `${stats.categories || 0}`, positive: true, icon: 'category' },
-    ];
-
-    // Mock recent orders (will be replaced with API data later)
-    const recentOrders = [
-        { id: 'ORD-001', customer: 'Sarah M.', items: 3, total: 6125000, status: 'Processing', date: 'Dec 16, 2024' },
-        { id: 'ORD-002', customer: 'James K.', items: 1, total: 3000000, status: 'Shipped', date: 'Dec 16, 2024' },
-        { id: 'ORD-003', customer: 'Emily R.', items: 2, total: 2225000, status: 'Delivered', date: 'Dec 15, 2024' },
-        { id: 'ORD-004', customer: 'Marcus T.', items: 4, total: 7800000, status: 'Pending', date: 'Dec 15, 2024' },
-    ];
-
-    const statusColors = {
-        'Pending': 'bg-yellow-500/20 text-yellow-400',
-        'Processing': 'bg-blue-500/20 text-blue-400',
-        'Shipped': 'bg-purple-500/20 text-purple-400',
-        'Delivered': 'bg-green-500/20 text-green-400',
-        'Cancelled': 'bg-red-500/20 text-red-400',
+    const handleExport = async (type) => {
+        try {
+            setExportLoading(true);
+            if (type === 'excel') {
+                await dashboardAPI.exportExcel(period, selectedDate || null, null);
+            } else {
+                await dashboardAPI.exportPdf(period, selectedDate || null, null);
+            }
+        } catch (error) {
+            alert('Export failed: ' + error.message);
+        } finally {
+            setExportLoading(false);
+        }
     };
+
+    const statsCards = [
+        {
+            label: 'Total Revenue',
+            value: formatPriceVND(dashboardData?.total_revenue || 0),
+            change: `${dashboardData?.revenue_change_percent >= 0 ? '+' : ''}${dashboardData?.revenue_change_percent.toFixed(1)}%`,
+            positive: dashboardData?.revenue_change_percent >= 0,
+            icon: 'payments'
+        },
+        {
+            label: 'Orders',
+            value: dashboardData?.total_orders.toString() || '0',
+            change: `${dashboardData?.order_change_percent >= 0 ? '+' : ''}${dashboardData?.order_change_percent.toFixed(1)}%`,
+            positive: dashboardData?.order_change_percent >= 0,
+            icon: 'shopping_bag'
+        },
+    ];
+
+    // Simple Bar Chart Component
+    const Chart = ({ data, color }) => {
+        if (!data || data.length === 0) return <div className="h-48 flex items-center justify-center text-gray-500">No data available</div>;
+
+        const maxValue = Math.max(...data.map(d => d.value)) || 1;
+
+        return (
+            <div className="h-48 flex items-end gap-2 px-2">
+                {data.map((item, i) => (
+                    <div key={i} className="flex-1 flex flex-col items-center gap-2 group relative">
+                        <div
+                            className={`w-full rounded-t-sm transition-all duration-500 ${color}`}
+                            style={{ height: `${(item.value / maxValue) * 100}%` }}
+                        >
+                            <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                                {period === 'day' ? item.label : item.label} : {item.value.toLocaleString()}
+                            </div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        );
+    };
+
+    if (loading && !dashboardData) {
+        return (
+            <div className="flex items-center justify-center min-h-[400px]">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[#d411d4]"></div>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6">
             {/* Page header */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h1 className="text-2xl font-bold">Dashboard</h1>
-                    <p className="text-gray-400 mt-1">Welcome back! Here's what's happening.</p>
+                    <p className="text-gray-400 mt-1">Business performance metrics and analysis.</p>
                 </div>
-                <div className="flex gap-3">
-                    <button className="px-4 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-sm font-medium transition-colors flex items-center gap-2">
-                        <span className="material-symbols-outlined text-[18px]">download</span>
-                        Export
-                    </button>
-                    <button className="px-4 py-2 bg-[#d411d4] hover:bg-[#b00eb0] rounded-lg text-sm font-medium transition-colors flex items-center gap-2">
-                        <span className="material-symbols-outlined text-[18px]">add</span>
-                        New Product
-                    </button>
+                <div className="flex flex-wrap gap-2 items-center">
+                    <div className="flex bg-[#1a1a2e] p-1 rounded-lg border border-white/5 mr-2">
+                        {['day', 'month', 'year'].map((p) => (
+                            <button
+                                key={p}
+                                onClick={() => setPeriod(p)}
+                                className={`px-4 py-1.5 rounded-md text-xs font-medium transition-colors ${period === p ? 'bg-[#d411d4] text-white' : 'text-gray-400 hover:text-white hover:bg-white/5'
+                                    }`}
+                            >
+                                {p.charAt(0).toUpperCase() + p.slice(1)}
+                            </button>
+                        ))}
+                    </div>
+                    <div className="flex items-center gap-2 bg-[#1a1a2e] p-2 rounded-lg border border-white/5">
+                        {period === 'day' && (
+                            <>
+                                <label className="text-xs text-gray-400">Ngày:</label>
+                                <input
+                                    type="date"
+                                    value={selectedDate}
+                                    onChange={(e) => setSelectedDate(e.target.value)}
+                                    className="bg-transparent text-sm text-white border-none outline-none cursor-pointer"
+                                />
+                            </>
+                        )}
+                        {period === 'month' && (
+                            <>
+                                <label className="text-xs text-gray-400">Tháng:</label>
+                                <input
+                                    type="month"
+                                    value={selectedDate}
+                                    onChange={(e) => setSelectedDate(e.target.value)}
+                                    className="bg-transparent text-sm text-white border-none outline-none cursor-pointer"
+                                />
+                            </>
+                        )}
+                        {period === 'year' && (
+                            <>
+                                <label className="text-xs text-gray-400">Năm:</label>
+                                <select
+                                    value={selectedDate}
+                                    onChange={(e) => setSelectedDate(e.target.value)}
+                                    className="bg-transparent text-sm text-white border-none outline-none cursor-pointer"
+                                >
+                                    {Array.from({ length: 10 }, (_, i) => new Date().getFullYear() - i).map(year => (
+                                        <option key={year} value={year} className="bg-[#1a1a2e]">{year}</option>
+                                    ))}
+                                </select>
+                            </>
+                        )}
+                    </div>
+                    <div className="flex gap-2">
+                        <button
+                            onClick={() => handleExport('excel')}
+                            disabled={exportLoading}
+                            className="px-4 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 disabled:opacity-50"
+                        >
+                            <span className="material-symbols-outlined text-[18px]">table_view</span>
+                            Excel
+                        </button>
+                        <button
+                            onClick={() => handleExport('pdf')}
+                            disabled={exportLoading}
+                            className="px-4 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 disabled:opacity-50"
+                        >
+                            <span className="material-symbols-outlined text-[18px]">picture_as_pdf</span>
+                            PDF
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -100,41 +199,65 @@ const AdminDashboard = () => {
                 ))}
             </div>
 
-            {/* Main content grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Recent orders */}
-                <div className="lg:col-span-2 bg-[#1a1a2e] rounded-xl border border-white/5">
-                    <div className="p-6 border-b border-white/5 flex items-center justify-between">
-                        <h2 className="text-lg font-bold">Recent Orders</h2>
-                        <Link to="/admin/orders" className="text-sm text-[#d411d4] hover:text-[#d411d4]/80 transition-colors">
-                            View all →
-                        </Link>
+            {/* Charts Section */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="bg-[#1a1a2e] rounded-xl border border-white/5 p-6">
+                    <h2 className="text-lg font-bold mb-6">Revenue</h2>
+                    <Chart
+                        data={dashboardData?.time_stats?.map(s => ({ label: s.label, value: s.revenue }))}
+                        color="bg-[#d411d4]"
+                    />
+                    <div className="mt-4 flex justify-between text-[10px] text-gray-500 overflow-hidden">
+                        {dashboardData?.time_stats?.filter((_, i, arr) => i === 0 || i === arr.length - 1 || i === Math.floor(arr.length / 2)).map((s, i) => (
+                            <span key={i}>{s.label}</span>
+                        ))}
+                    </div>
+                </div>
+                <div className="bg-[#1a1a2e] rounded-xl border border-white/5 p-6">
+                    <h2 className="text-lg font-bold mb-6">Orders</h2>
+                    <Chart
+                        data={dashboardData?.time_stats?.map(s => ({ label: s.label, value: s.order_count }))}
+                        color="bg-blue-500"
+                    />
+                    <div className="mt-4 flex justify-between text-[10px] text-gray-500 overflow-hidden">
+                        {dashboardData?.time_stats.filter((_, i, arr) => i === 0 || i === arr.length - 1 || i === Math.floor(arr.length / 2)).map((s, i) => (
+                            <span key={i}>{s.label}</span>
+                        ))}
+                    </div>
+                </div>
+            </div>
+
+            {/* Products Tables Section */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Top Best Sellers */}
+                <div className="bg-[#1a1a2e] rounded-xl border border-white/5">
+                    <div className="p-6 border-b border-white/5">
+                        <h2 className="text-lg font-bold flex items-center gap-2">
+                            <span className="material-symbols-outlined text-green-400">trending_up</span>
+                            Top 5 Best Sellers
+                        </h2>
                     </div>
                     <div className="overflow-x-auto">
                         <table className="w-full">
                             <thead>
                                 <tr className="text-left text-sm text-gray-400 border-b border-white/5">
-                                    <th className="px-6 py-4 font-medium">Order ID</th>
-                                    <th className="px-6 py-4 font-medium">Customer</th>
-                                    <th className="px-6 py-4 font-medium">Items</th>
-                                    <th className="px-6 py-4 font-medium">Total</th>
-                                    <th className="px-6 py-4 font-medium">Status</th>
-                                    <th className="px-6 py-4 font-medium">Date</th>
+                                    <th className="px-6 py-4 font-medium">Rank</th>
+                                    <th className="px-6 py-4 font-medium">Product</th>
+                                    <th className="px-6 py-4 font-medium">Sold</th>
+                                    <th className="px-6 py-4 font-medium">Revenue</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {recentOrders.map((order) => (
-                                    <tr key={order.id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
-                                        <td className="px-6 py-4 font-medium">{order.id}</td>
-                                        <td className="px-6 py-4 text-gray-300">{order.customer}</td>
-                                        <td className="px-6 py-4 text-gray-400">{order.items}</td>
-                                        <td className="px-6 py-4 font-medium">{formatPriceVND(order.total)}</td>
+                                {dashboardData?.top_best_sellers.map((product, i) => (
+                                    <tr key={product.product_id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
                                         <td className="px-6 py-4">
-                                            <span className={`px-2 py-1 rounded text-xs font-medium ${statusColors[order.status]}`}>
-                                                {order.status}
-                                            </span>
+                                            <div className="w-6 h-6 flex items-center justify-center bg-green-500/20 text-green-400 text-xs font-bold rounded">
+                                                {i + 1}
+                                            </div>
                                         </td>
-                                        <td className="px-6 py-4 text-gray-400">{order.date}</td>
+                                        <td className="px-6 py-4 text-sm font-medium">{product.name}</td>
+                                        <td className="px-6 py-4 text-sm text-gray-300">{product.total_sold}</td>
+                                        <td className="px-6 py-4 text-sm font-medium">{formatPriceVND(product.revenue)}</td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -142,46 +265,39 @@ const AdminDashboard = () => {
                     </div>
                 </div>
 
-                {/* Quick actions & Top products */}
-                <div className="space-y-6">
-                    {/* Quick actions */}
-                    <div className="bg-[#1a1a2e] rounded-xl border border-white/5 p-6">
-                        <h2 className="text-lg font-bold mb-4">Quick Actions</h2>
-                        <div className="grid grid-cols-2 gap-3">
-                            <Link to="/admin/products" className="flex flex-col items-center gap-2 p-4 bg-white/5 hover:bg-white/10 rounded-lg transition-colors">
-                                <span className="material-symbols-outlined text-[#d411d4]">add_circle</span>
-                                <span className="text-sm">Add Product</span>
-                            </Link>
-
-                            <Link to="/admin/orders" className="flex flex-col items-center gap-2 p-4 bg-white/5 hover:bg-white/10 rounded-lg transition-colors">
-                                <span className="material-symbols-outlined text-[#d411d4]">local_shipping</span>
-                                <span className="text-sm">View Orders</span>
-                            </Link>
-                            <Link to="/admin/reviews" className="flex flex-col items-center gap-2 p-4 bg-white/5 hover:bg-white/10 rounded-lg transition-colors">
-                                <span className="material-symbols-outlined text-[#d411d4]">rate_review</span>
-                                <span className="text-sm">Reviews</span>
-                            </Link>
-                        </div>
+                {/* Top Worst Sellers */}
+                <div className="bg-[#1a1a2e] rounded-xl border border-white/5">
+                    <div className="p-6 border-b border-white/5">
+                        <h2 className="text-lg font-bold flex items-center gap-2">
+                            <span className="material-symbols-outlined text-red-400">trending_down</span>
+                            Top 5 Unsold Products
+                        </h2>
                     </div>
-
-                    <div className="bg-[#1a1a2e] rounded-xl border border-white/5 p-6">
-                        <h2 className="text-lg font-bold mb-4">Top Products</h2>
-                        <div className="space-y-4">
-                            {topProducts.length > 0 ? topProducts.map((product, i) => (
-                                <div key={product.product_id} className="flex items-center gap-3">
-                                    <div className="w-10 h-10 bg-[#d411d4]/20 rounded-lg flex items-center justify-center text-sm font-bold text-[#d411d4]">
-                                        {i + 1}
-                                    </div>
-                                    <div className="flex-1">
-                                        <p className="font-medium text-sm">{product.name}</p>
-                                        <p className="text-xs text-gray-400">In stock</p>
-                                    </div>
-                                    <span className="text-sm font-medium">{formatPriceVND(product.base_price)}</span>
-                                </div>
-                            )) : (
-                                <p className="text-gray-400 text-sm">No products yet</p>
-                            )}
-                        </div>
+                    <div className="overflow-x-auto">
+                        <table className="w-full">
+                            <thead>
+                                <tr className="text-left text-sm text-gray-400 border-b border-white/5">
+                                    <th className="px-6 py-4 font-medium">Rank</th>
+                                    <th className="px-6 py-4 font-medium">Product</th>
+                                    <th className="px-6 py-4 font-medium">Sold</th>
+                                    <th className="px-6 py-4 font-medium">Revenue</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {dashboardData?.top_worst_sellers.map((product, i) => (
+                                    <tr key={product.product_id} className="border-b border-white/5 hover:bg-white/5 transition-colors">
+                                        <td className="px-6 py-4">
+                                            <div className="w-6 h-6 flex items-center justify-center bg-red-500/20 text-red-400 text-xs font-bold rounded">
+                                                {i + 1}
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 text-sm font-medium">{product.name}</td>
+                                        <td className="px-6 py-4 text-sm text-gray-300">{product.total_sold}</td>
+                                        <td className="px-6 py-4 text-sm font-medium">{formatPriceVND(product.revenue)}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
