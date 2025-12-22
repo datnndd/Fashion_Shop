@@ -7,10 +7,10 @@ from app.deps import get_current_user
 from app.schemas.location import (
     ProvinceCreate,
     ProvinceRead,
-    UserAddressCreate,
-    UserAddressRead,
-    UserAddressCreateMe,
-    UserAddressUpdate,
+    ShippingAddressCreate,
+    ShippingAddressRead,
+    ShippingAddressCreateMe,
+    ShippingAddressUpdate,
     WardCreate,
     WardRead,
 )
@@ -89,12 +89,12 @@ async def list_wards(province_id: int, session: AsyncSession = Depends(get_sessi
 
 # ==================== ADDRESSES (Admin) ====================
 
-@router.post("/addresses", response_model=UserAddressRead, status_code=status.HTTP_201_CREATED)
-async def create_address(payload: UserAddressCreate, session: AsyncSession = Depends(get_session)) -> UserAddressRead:
+@router.post("/shipping-addresses", response_model=ShippingAddressRead, status_code=status.HTTP_201_CREATED)
+async def create_address(payload: ShippingAddressCreate, session: AsyncSession = Depends(get_session)) -> ShippingAddressRead:
     """
-    Create a new address for a user (admin endpoint).
+    Create a new shipping address for a user (admin endpoint).
     
-    SQL: INSERT INTO user_addresses (...) VALUES (...) RETURNING *
+    SQL: INSERT INTO shipping_addresses (...) VALUES (...) RETURNING *
     """
     # Check user exists
     user_result = await session.execute(
@@ -128,21 +128,29 @@ async def create_address(payload: UserAddressCreate, session: AsyncSession = Dep
     # Unset other default addresses if this one is default
     if payload.is_default:
         await session.execute(
-            text("UPDATE user_addresses SET is_default = false WHERE user_id = :user_id"),
+            text("UPDATE shipping_addresses SET is_default = false WHERE user_id = :user_id"),
             {"user_id": payload.user_id}
         )
 
     # Insert address
     result = await session.execute(
         text("""
-            INSERT INTO user_addresses (user_id, province_id, ward_id, street, full_address, is_default)
-            VALUES (:user_id, :province_id, :ward_id, :street, :full_address, :is_default)
+            INSERT INTO shipping_addresses (
+                user_id, province_id, ward_id, recipient_name, recipient_phone, 
+                street, full_address, is_default
+            )
+            VALUES (
+                :user_id, :province_id, :ward_id, :recipient_name, :recipient_phone,
+                :street, :full_address, :is_default
+            )
             RETURNING *
         """),
         {
             "user_id": payload.user_id,
             "province_id": payload.province_id,
             "ward_id": payload.ward_id,
+            "recipient_name": payload.recipient_name,
+            "recipient_phone": payload.recipient_phone,
             "street": payload.street,
             "full_address": payload.full_address,
             "is_default": payload.is_default,
@@ -153,15 +161,15 @@ async def create_address(payload: UserAddressCreate, session: AsyncSession = Dep
     return dict(address)
 
 
-@router.get("/users/{user_id}/addresses", response_model=list[UserAddressRead])
-async def list_user_addresses(user_id: int, session: AsyncSession = Depends(get_session)) -> list[UserAddressRead]:
+@router.get("/users/{user_id}/shipping-addresses", response_model=list[ShippingAddressRead])
+async def list_user_addresses(user_id: int, session: AsyncSession = Depends(get_session)) -> list[ShippingAddressRead]:
     """
-    List all addresses for a user.
+    List all shipping addresses for a user.
     
-    SQL: SELECT * FROM user_addresses WHERE user_id = :user_id
+    SQL: SELECT * FROM shipping_addresses WHERE user_id = :user_id AND deleted_at IS NULL
     """
     result = await session.execute(
-        text("SELECT * FROM user_addresses WHERE user_id = :user_id"),
+        text("SELECT * FROM shipping_addresses WHERE user_id = :user_id AND deleted_at IS NULL"),
         {"user_id": user_id}
     )
     return [dict(a) for a in result.mappings().all()]
@@ -169,33 +177,33 @@ async def list_user_addresses(user_id: int, session: AsyncSession = Depends(get_
 
 # ==================== MY ADDRESSES (Current User) ====================
 
-@router.get("/me/addresses", response_model=list[UserAddressRead])
+@router.get("/me/shipping-addresses", response_model=list[ShippingAddressRead])
 async def get_my_addresses(
     session: AsyncSession = Depends(get_session),
     current_user: dict = Depends(get_current_user),
-) -> list[UserAddressRead]:
+) -> list[ShippingAddressRead]:
     """
-    Get current user's addresses.
+    Get current user's shipping addresses.
     
-    SQL: SELECT * FROM user_addresses WHERE user_id = :user_id
+    SQL: SELECT * FROM shipping_addresses WHERE user_id = :user_id AND deleted_at IS NULL
     """
     result = await session.execute(
-        text("SELECT * FROM user_addresses WHERE user_id = :user_id"),
+        text("SELECT * FROM shipping_addresses WHERE user_id = :user_id AND deleted_at IS NULL"),
         {"user_id": current_user["user_id"]}
     )
     return [dict(a) for a in result.mappings().all()]
 
 
-@router.post("/me/addresses", response_model=UserAddressRead, status_code=status.HTTP_201_CREATED)
+@router.post("/me/shipping-addresses", response_model=ShippingAddressRead, status_code=status.HTTP_201_CREATED)
 async def create_my_address(
-    payload: UserAddressCreateMe,
+    payload: ShippingAddressCreateMe,
     session: AsyncSession = Depends(get_session),
     current_user: dict = Depends(get_current_user),
-) -> UserAddressRead:
+) -> ShippingAddressRead:
     """
-    Create a new address for current user.
+    Create a new shipping address for current user.
     
-    SQL: INSERT INTO user_addresses (...) VALUES (...) RETURNING *
+    SQL: INSERT INTO shipping_addresses (...) VALUES (...) RETURNING *
     """
     # Check province exists
     province_result = await session.execute(
@@ -221,21 +229,29 @@ async def create_my_address(
     # Unset other default addresses if this one is default
     if payload.is_default:
         await session.execute(
-            text("UPDATE user_addresses SET is_default = false WHERE user_id = :user_id"),
+            text("UPDATE shipping_addresses SET is_default = false WHERE user_id = :user_id"),
             {"user_id": current_user["user_id"]}
         )
 
     # Insert address
     result = await session.execute(
         text("""
-            INSERT INTO user_addresses (user_id, province_id, ward_id, street, full_address, is_default)
-            VALUES (:user_id, :province_id, :ward_id, :street, :full_address, :is_default)
+            INSERT INTO shipping_addresses (
+                user_id, province_id, ward_id, recipient_name, recipient_phone,
+                street, full_address, is_default
+            )
+            VALUES (
+                :user_id, :province_id, :ward_id, :recipient_name, :recipient_phone,
+                :street, :full_address, :is_default
+            )
             RETURNING *
         """),
         {
             "user_id": current_user["user_id"],
             "province_id": payload.province_id,
             "ward_id": payload.ward_id,
+            "recipient_name": payload.recipient_name,
+            "recipient_phone": payload.recipient_phone,
             "street": payload.street,
             "full_address": payload.full_address,
             "is_default": payload.is_default,
@@ -246,21 +262,21 @@ async def create_my_address(
     return dict(address)
 
 
-@router.put("/me/addresses/{address_id}", response_model=UserAddressRead)
+@router.put("/me/shipping-addresses/{address_id}", response_model=ShippingAddressRead)
 async def update_my_address(
     address_id: int,
-    payload: UserAddressUpdate,
+    payload: ShippingAddressUpdate,
     session: AsyncSession = Depends(get_session),
     current_user: dict = Depends(get_current_user),
-) -> UserAddressRead:
+) -> ShippingAddressRead:
     """
-    Update current user's address.
+    Update current user's shipping address.
     
-    SQL: UPDATE user_addresses SET ... WHERE address_id = :address_id RETURNING *
+    SQL: UPDATE shipping_addresses SET ... WHERE shipping_address_id = :address_id AND deleted_at IS NULL RETURNING *
     """
     # Get address
     result = await session.execute(
-        text("SELECT * FROM user_addresses WHERE address_id = :address_id"),
+        text("SELECT * FROM shipping_addresses WHERE shipping_address_id = :address_id AND deleted_at IS NULL"),
         {"address_id": address_id}
     )
     address = result.mappings().one_or_none()
@@ -298,6 +314,14 @@ async def update_my_address(
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Ward does not belong to province")
         updates.append("ward_id = :ward_id")
         params["ward_id"] = payload.ward_id
+        
+    if payload.recipient_name is not None:
+        updates.append("recipient_name = :recipient_name")
+        params["recipient_name"] = payload.recipient_name
+        
+    if payload.recipient_phone is not None:
+        updates.append("recipient_phone = :recipient_phone")
+        params["recipient_phone"] = payload.recipient_phone
     
     if payload.street is not None:
         updates.append("street = :street")
@@ -309,7 +333,7 @@ async def update_my_address(
         if payload.is_default:
             # Unset other defaults
             await session.execute(
-                text("UPDATE user_addresses SET is_default = false WHERE user_id = :user_id AND address_id != :address_id"),
+                text("UPDATE shipping_addresses SET is_default = false WHERE user_id = :user_id AND shipping_address_id != :address_id"),
                 {"user_id": current_user["user_id"], "address_id": address_id}
             )
         updates.append("is_default = :is_default")
@@ -319,7 +343,7 @@ async def update_my_address(
         return dict(address)
     
     result = await session.execute(
-        text(f"UPDATE user_addresses SET {', '.join(updates)} WHERE address_id = :address_id RETURNING *"),
+        text(f"UPDATE shipping_addresses SET {', '.join(updates)} WHERE shipping_address_id = :address_id AND deleted_at IS NULL RETURNING *"),
         params
     )
     updated_address = result.mappings().one()
@@ -327,20 +351,20 @@ async def update_my_address(
     return dict(updated_address)
 
 
-@router.delete("/me/addresses/{address_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/me/shipping-addresses/{address_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_my_address(
     address_id: int,
     session: AsyncSession = Depends(get_session),
     current_user: dict = Depends(get_current_user),
 ):
     """
-    Delete current user's address.
+    Delete current user's shipping address.
     
-    SQL: DELETE FROM user_addresses WHERE address_id = :address_id
+    SQL: UPDATE shipping_addresses SET deleted_at = NOW() WHERE shipping_address_id = :address_id
     """
     # Get address
     result = await session.execute(
-        text("SELECT * FROM user_addresses WHERE address_id = :address_id"),
+        text("SELECT * FROM shipping_addresses WHERE shipping_address_id = :address_id AND deleted_at IS NULL"),
         {"address_id": address_id}
     )
     address = result.mappings().one_or_none()
@@ -351,7 +375,7 @@ async def delete_my_address(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You can only delete your own addresses")
     
     await session.execute(
-        text("DELETE FROM user_addresses WHERE address_id = :address_id"),
+        text("UPDATE shipping_addresses SET deleted_at = NOW() WHERE shipping_address_id = :address_id"),
         {"address_id": address_id}
     )
     await session.commit()

@@ -125,6 +125,20 @@ async def update_my_profile(
     if payload.dob is not None:
         updates.append("dob = :dob")
         params["dob"] = payload.dob
+        
+    # Address updates
+    if payload.province_id is not None:
+        updates.append("province_id = :province_id")
+        params["province_id"] = payload.province_id
+    if payload.ward_id is not None:
+        updates.append("ward_id = :ward_id")
+        params["ward_id"] = payload.ward_id
+    if payload.street is not None:
+        updates.append("street = :street")
+        params["street"] = payload.street
+    if payload.full_address is not None:
+        updates.append("full_address = :full_address")
+        params["full_address"] = payload.full_address
     
     updates.append("updated_at = NOW()")
     
@@ -188,6 +202,17 @@ async def get_my_orders(
         items = [dict(item) for item in items_result.mappings().all()]
         order_dict = dict(order)
         order_dict["items"] = items
+        
+        # Get shipping address
+        if order["shipping_address_id"]:
+            sa_result = await session.execute(
+                text("SELECT * FROM shipping_addresses WHERE shipping_address_id = :sa_id"),
+                {"sa_id": order["shipping_address_id"]}
+            )
+            sa = sa_result.mappings().one_or_none()
+            if sa:
+                order_dict["shipping_address"] = dict(sa)
+                
         result.append(order_dict)
     
     return result

@@ -10,6 +10,12 @@ class UserBase(BaseModel):
     gender: int = 0
     dob: date | None = None
     role: str = "customer"
+    
+    # Address fields
+    province_id: int | None = None
+    ward_id: int | None = None
+    street: str | None = None
+    full_address: str | None = None
 
 
 class UserCreate(UserBase):
@@ -29,6 +35,10 @@ class UserRead(UserBase):
     created_at: datetime
     updated_at: datetime | None
     deleted_at: datetime | None
+    
+    # Include address details in read schema if needed, but usually IDs are enough for basic read
+    # If UI needs province/ward names, we might need nested schemas or enrich response.
+    # For now keeping it simple as per base.
 
     model_config = {"from_attributes": True}
 
@@ -48,6 +58,12 @@ class UserUpdate(BaseModel):
     phone: str | None = Field(default=None, max_length=20)
     gender: int | None = None
     dob: date | None = None
+    
+    # Address update
+    province_id: int | None = None
+    ward_id: int | None = None
+    street: str | None = None
+    full_address: str | None = None
 
 
 class PasswordChange(BaseModel):

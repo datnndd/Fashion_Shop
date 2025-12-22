@@ -44,6 +44,16 @@ async def list_orders(
             {"order_id": order["order_id"]}
         )
         order["items"] = [dict(item) for item in items_result.mappings().all()]
+        
+        # Get shipping address
+        if order["shipping_address_id"]:
+            sa_result = await session.execute(
+                text("SELECT * FROM shipping_addresses WHERE shipping_address_id = :sa_id"),
+                {"sa_id": order["shipping_address_id"]}
+            )
+            sa = sa_result.mappings().one_or_none()
+            if sa:
+                order["shipping_address"] = dict(sa)
     
     return orders
 
@@ -77,6 +87,16 @@ async def get_order(
         {"order_id": order_id}
     )
     order["items"] = [dict(item) for item in items_result.mappings().all()]
+    
+    # Get shipping address
+    if order["shipping_address_id"]:
+        sa_result = await session.execute(
+            text("SELECT * FROM shipping_addresses WHERE shipping_address_id = :sa_id"),
+            {"sa_id": order["shipping_address_id"]}
+        )
+        sa = sa_result.mappings().one_or_none()
+        if sa:
+            order["shipping_address"] = dict(sa)
     
     return order
 
@@ -115,5 +135,15 @@ async def update_order_status(
         {"order_id": order_id}
     )
     order["items"] = [dict(item) for item in items_result.mappings().all()]
+    
+    # Get shipping address
+    if order["shipping_address_id"]:
+        sa_result = await session.execute(
+            text("SELECT * FROM shipping_addresses WHERE shipping_address_id = :sa_id"),
+            {"sa_id": order["shipping_address_id"]}
+        )
+        sa = sa_result.mappings().one_or_none()
+        if sa:
+            order["shipping_address"] = dict(sa)
     
     return order

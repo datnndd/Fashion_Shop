@@ -13,7 +13,7 @@ from app.models import (  # noqa: F401
     Province,
     Review,
     User,
-    UserAddress,
+    ShippingAddress,
     Ward,
 )
 

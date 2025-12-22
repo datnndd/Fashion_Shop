@@ -34,13 +34,8 @@ class Order(Base):
     order_id: Mapped[int] = mapped_column(Integer, primary_key=True)
     code: Mapped[str] = mapped_column(String(50), unique=True, index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.user_id"))
+    shipping_address_id: Mapped[int] = mapped_column(ForeignKey("shipping_addresses.shipping_address_id"))
     discount_id: Mapped[int | None] = mapped_column(ForeignKey("discounts.discount_id"), nullable=True)
-
-    recipient_name: Mapped[str] = mapped_column(String(255))
-    recipient_phone: Mapped[str] = mapped_column(String(20))
-    shipping_address_full: Mapped[str] = mapped_column(String(500))
-    shipping_province: Mapped[str] = mapped_column(String(100))
-    shipping_ward: Mapped[str] = mapped_column(String(100))
 
     subtotal: Mapped[Numeric] = mapped_column(Numeric(15, 2))
     discount_amount: Mapped[Numeric] = mapped_column(Numeric(15, 2))
@@ -56,6 +51,7 @@ class Order(Base):
     updated_at: Mapped[DateTime | None] = mapped_column(DateTime, nullable=True)
 
     user = relationship("User", back_populates="orders")
+    shipping_address = relationship("ShippingAddress", back_populates="orders")
     discount = relationship("Discount", back_populates="orders")
     items = relationship("OrderItem", back_populates="order", cascade="all, delete-orphan")
 

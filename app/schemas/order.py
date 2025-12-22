@@ -1,6 +1,7 @@
 from datetime import datetime
 from pydantic import BaseModel
 from typing import List, Optional
+from app.schemas.location import ShippingAddressRead
 
 class OrderItemRead(BaseModel):
     product_name: str
@@ -15,9 +16,8 @@ class OrderItemRead(BaseModel):
 class OrderRead(BaseModel):
     order_id: int
     code: str
-    recipient_name: str
-    recipient_phone: str
-    shipping_address_full: str
+    shipping_address_id: int
+    shipping_address: Optional[ShippingAddressRead] = None
     total_price: float
     status: str
     payment_method: str
