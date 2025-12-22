@@ -1,12 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import select, func
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_session
 from app.deps import get_admin_user
-from app.models.marketing import Review
-from app.models.catalog import Product
-from app.models.user import User
 from app.schemas.review import ReviewCreate, ReviewRead, ReviewReadWithUser, ReviewReadAdmin
 
 router = APIRouter(prefix="/reviews", tags=["reviews"])
@@ -20,37 +17,51 @@ async def list_product_reviews(
     offset: int = Query(default=0),
     session: AsyncSession = Depends(get_session),
 ) -> list[ReviewReadWithUser]:
-    """Get all reviews for a product."""
-    product = await session.get(Product, product_id)
-    if not product:
+    """
+    Get all reviews for a product.
+    
+    SQL: SELECT r.*, u.name as user_name 
+         FROM reviews r 
+         JOIN users u ON r.user_id = u.user_id 
+         WHERE r.product_id = :product_id [AND r.is_approved = :is_approved]
+         ORDER BY r.created_at DESC LIMIT ... OFFSET ...
+    """
+    # Check product exists
+    result = await session.execute(
+        text("SELECT * FROM products WHERE product_id = :product_id"),
+        {"product_id": product_id}
+    )
+    if not result.mappings().one_or_none():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
     
-    query = select(Review, User.name.label("user_name")).join(User).where(Review.product_id == product_id)
-    
+    # Build query with optional is_approved filter
     if is_approved is not None:
-        query = query.where(Review.is_approved == is_approved)
+        query = text("""
+            SELECT r.*, u.name as user_name 
+            FROM reviews r 
+            JOIN users u ON r.user_id = u.user_id 
+            WHERE r.product_id = :product_id AND r.is_approved = :is_approved
+            ORDER BY r.created_at DESC 
+            LIMIT :limit OFFSET :offset
+        """)
+        params = {"product_id": product_id, "is_approved": is_approved, "limit": limit, "offset": offset}
+    else:
+        query = text("""
+            SELECT r.*, u.name as user_name 
+            FROM reviews r 
+            JOIN users u ON r.user_id = u.user_id 
+            WHERE r.product_id = :product_id
+            ORDER BY r.created_at DESC 
+            LIMIT :limit OFFSET :offset
+        """)
+        params = {"product_id": product_id, "limit": limit, "offset": offset}
     
-    query = query.order_by(Review.created_at.desc()).offset(offset).limit(limit)
-    result = await session.execute(query)
-    
+    result = await session.execute(query, params)
     reviews = []
-    for review, user_name in result:
-        review_dict = {
-            "review_id": review.review_id,
-            "user_id": review.user_id,
-            "product_id": review.product_id,
-            "rating": review.rating,
-            "title": review.title,
-            "comment": review.comment,
-            "size_purchased": review.size_purchased,
-            "images": review.images,
-            "helpful_count": review.helpful_count,
-            "created_at": review.created_at,
-            "is_approved": review.is_approved,
-            "user_name": user_name,
-            "is_verified": True,  # All reviews require order_item, so they're verified
-        }
-        reviews.append(ReviewReadWithUser(**review_dict))
+    for row in result.mappings().all():
+        review_dict = dict(row)
+        review_dict["is_verified"] = True  # All reviews require order_item, so they're verified
+        reviews.append(review_dict)
     
     return reviews
 
@@ -60,35 +71,50 @@ async def get_product_review_summary(
     product_id: int,
     session: AsyncSession = Depends(get_session),
 ) -> dict:
-    """Get review summary (average rating, count) for a product."""
-    product = await session.get(Product, product_id)
-    if not product:
+    """
+    Get review summary (average rating, count) for a product.
+    
+    SQL: SELECT COUNT(*) as total_reviews, AVG(rating) as average_rating 
+         FROM reviews WHERE product_id = :product_id AND is_approved = true
+         
+         SELECT rating, COUNT(*) as count 
+         FROM reviews WHERE product_id = :product_id AND is_approved = true
+         GROUP BY rating
+    """
+    # Check product exists
+    result = await session.execute(
+        text("SELECT * FROM products WHERE product_id = :product_id"),
+        {"product_id": product_id}
+    )
+    if not result.mappings().one_or_none():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
     
-    query = (
-        select(
-            func.count(Review.review_id).label("total_reviews"),
-            func.avg(Review.rating).label("average_rating"),
-        )
-        .where(Review.product_id == product_id)
-        .where(Review.is_approved == True)
+    # Get summary
+    summary_result = await session.execute(
+        text("""
+            SELECT COUNT(*) as total_reviews, AVG(rating) as average_rating 
+            FROM reviews 
+            WHERE product_id = :product_id AND is_approved = true
+        """),
+        {"product_id": product_id}
     )
-    result = await session.execute(query)
-    row = result.one()
+    summary = summary_result.mappings().one()
     
-    # Get rating distribution
-    dist_query = (
-        select(Review.rating, func.count(Review.review_id))
-        .where(Review.product_id == product_id)
-        .where(Review.is_approved == True)
-        .group_by(Review.rating)
+    # Get distribution
+    dist_result = await session.execute(
+        text("""
+            SELECT rating, COUNT(*) as count 
+            FROM reviews 
+            WHERE product_id = :product_id AND is_approved = true
+            GROUP BY rating
+        """),
+        {"product_id": product_id}
     )
-    dist_result = await session.execute(dist_query)
-    distribution = {r: c for r, c in dist_result}
+    distribution = {r["rating"]: r["count"] for r in dist_result.mappings().all()}
     
     return {
-        "total_reviews": row.total_reviews or 0,
-        "average_rating": float(row.average_rating) if row.average_rating else 0,
+        "total_reviews": summary["total_reviews"] or 0,
+        "average_rating": float(summary["average_rating"]) if summary["average_rating"] else 0,
         "distribution": {
             5: distribution.get(5, 0),
             4: distribution.get(4, 0),
@@ -104,62 +130,73 @@ async def mark_review_helpful(
     review_id: int,
     session: AsyncSession = Depends(get_session),
 ) -> ReviewRead:
-    """Mark a review as helpful (increment helpful_count)."""
-    review = await session.get(Review, review_id)
-    if not review:
+    """
+    Mark a review as helpful (increment helpful_count).
+    
+    SQL: UPDATE reviews SET helpful_count = helpful_count + 1 WHERE review_id = :review_id RETURNING *
+    """
+    result = await session.execute(
+        text("SELECT * FROM reviews WHERE review_id = :review_id"),
+        {"review_id": review_id}
+    )
+    if not result.mappings().one_or_none():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Review not found")
     
-    review.helpful_count += 1
+    result = await session.execute(
+        text("UPDATE reviews SET helpful_count = helpful_count + 1 WHERE review_id = :review_id RETURNING *"),
+        {"review_id": review_id}
+    )
+    review = result.mappings().one()
     await session.commit()
-    await session.refresh(review)
-    return review
+    return dict(review)
+
+
 @router.get("/", response_model=list[ReviewReadAdmin])
 async def list_all_reviews(
     is_approved: bool | None = Query(default=None),
     limit: int = Query(default=50, le=100),
     offset: int = Query(default=0),
     session: AsyncSession = Depends(get_session),
-    admin: User = Depends(get_admin_user),
+    admin: dict = Depends(get_admin_user),
 ) -> list[ReviewReadAdmin]:
-    """Get all reviews (for admin dashboard)."""
-    # Join Review with User and Product
-    query = (
-        select(
-            Review,
-            User.name.label("user_name"),
-            Product.name.label("product_name"),
-            Product.slug.label("product_slug")
-        )
-        .join(User, Review.user_id == User.user_id)
-        .join(Product, Review.product_id == Product.product_id)
-    )
+    """
+    Get all reviews (for admin dashboard).
     
+    SQL: SELECT r.*, u.name as user_name, p.name as product_name, p.slug as product_slug
+         FROM reviews r
+         JOIN users u ON r.user_id = u.user_id
+         JOIN products p ON r.product_id = p.product_id
+         [WHERE r.is_approved = :is_approved]
+         ORDER BY r.created_at DESC LIMIT ... OFFSET ...
+    """
     if is_approved is not None:
-        query = query.where(Review.is_approved == is_approved)
+        query = text("""
+            SELECT r.*, u.name as user_name, p.name as product_name, p.slug as product_slug
+            FROM reviews r
+            JOIN users u ON r.user_id = u.user_id
+            JOIN products p ON r.product_id = p.product_id
+            WHERE r.is_approved = :is_approved
+            ORDER BY r.created_at DESC 
+            LIMIT :limit OFFSET :offset
+        """)
+        params = {"is_approved": is_approved, "limit": limit, "offset": offset}
+    else:
+        query = text("""
+            SELECT r.*, u.name as user_name, p.name as product_name, p.slug as product_slug
+            FROM reviews r
+            JOIN users u ON r.user_id = u.user_id
+            JOIN products p ON r.product_id = p.product_id
+            ORDER BY r.created_at DESC 
+            LIMIT :limit OFFSET :offset
+        """)
+        params = {"limit": limit, "offset": offset}
     
-    query = query.order_by(Review.created_at.desc()).offset(offset).limit(limit)
-    result = await session.execute(query)
-    
+    result = await session.execute(query, params)
     reviews = []
-    for review, user_name, product_name, product_slug in result:
-        review_dict = {
-            "review_id": review.review_id,
-            "user_id": review.user_id,
-            "product_id": review.product_id,
-            "rating": review.rating,
-            "title": review.title,
-            "comment": review.comment,
-            "size_purchased": review.size_purchased,
-            "images": review.images,
-            "helpful_count": review.helpful_count,
-            "created_at": review.created_at,
-            "is_approved": review.is_approved,
-            "user_name": user_name,
-            "product_name": product_name,
-            "product_slug": product_slug,
-            "is_verified": True,
-        }
-        reviews.append(ReviewReadAdmin(**review_dict))
+    for row in result.mappings().all():
+        review_dict = dict(row)
+        review_dict["is_verified"] = True
+        reviews.append(review_dict)
     
     return reviews
 
@@ -168,31 +205,51 @@ async def list_all_reviews(
 async def approve_review(
     review_id: int,
     session: AsyncSession = Depends(get_session),
-    admin: User = Depends(get_admin_user),
+    admin: dict = Depends(get_admin_user),
 ) -> ReviewRead:
-    """Approve a review."""
-    review = await session.get(Review, review_id)
-    if not review:
+    """
+    Approve a review.
+    
+    SQL: UPDATE reviews SET is_approved = true WHERE review_id = :review_id RETURNING *
+    """
+    result = await session.execute(
+        text("SELECT * FROM reviews WHERE review_id = :review_id"),
+        {"review_id": review_id}
+    )
+    if not result.mappings().one_or_none():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Review not found")
     
-    review.is_approved = True
+    result = await session.execute(
+        text("UPDATE reviews SET is_approved = true WHERE review_id = :review_id RETURNING *"),
+        {"review_id": review_id}
+    )
+    review = result.mappings().one()
     await session.commit()
-    await session.refresh(review)
-    return review
+    return dict(review)
 
 
 @router.patch("/{review_id}/reject", response_model=ReviewRead)
 async def reject_review(
     review_id: int,
     session: AsyncSession = Depends(get_session),
-    admin: User = Depends(get_admin_user),
+    admin: dict = Depends(get_admin_user),
 ) -> ReviewRead:
-    """Reject a review."""
-    review = await session.get(Review, review_id)
-    if not review:
+    """
+    Reject a review.
+    
+    SQL: UPDATE reviews SET is_approved = false WHERE review_id = :review_id RETURNING *
+    """
+    result = await session.execute(
+        text("SELECT * FROM reviews WHERE review_id = :review_id"),
+        {"review_id": review_id}
+    )
+    if not result.mappings().one_or_none():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Review not found")
     
-    review.is_approved = False
+    result = await session.execute(
+        text("UPDATE reviews SET is_approved = false WHERE review_id = :review_id RETURNING *"),
+        {"review_id": review_id}
+    )
+    review = result.mappings().one()
     await session.commit()
-    await session.refresh(review)
-    return review
+    return dict(review)

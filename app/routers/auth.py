@@ -3,12 +3,11 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
-from sqlalchemy import select
+from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.db.session import get_session
-from app.models.user import User
 from app.schemas.token import Token
 from app.utils.security import create_access_token, verify_password
 
@@ -21,27 +20,34 @@ async def login_access_token(
     session: AsyncSession = Depends(get_session),
 ) -> Any:
     """
-    OAuth2 compatible token login, get an access token for future requests
-    """
-    # 1. Provide custom handling for email instead of username
-    user = await session.scalar(select(User).where(User.email == form_data.username))
+    OAuth2 compatible token login, get an access token for future requests.
     
-    # 2. Verify user and password
-    if not user or not verify_password(form_data.password, user.password_hash):
+    SQL Query:
+        SELECT * FROM users WHERE email = :email
+    """
+    # SQL text query để tìm user theo email
+    result = await session.execute(
+        text("SELECT * FROM users WHERE email = :email"),
+        {"email": form_data.username}
+    )
+    user = result.mappings().one_or_none()
+    
+    # Verify user và password
+    if not user or not verify_password(form_data.password, user["password_hash"]):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Incorrect email or password",
         )
     
-    if not user.is_active:
+    if not user["is_active"]:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Inactive user")
 
-    # 3. Create access token
+    # Tạo access token
     access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
     return {
         "access_token": create_access_token(
-            user.user_id, expires_delta=access_token_expires
+            user["user_id"], expires_delta=access_token_expires
         ),
         "token_type": "bearer",
-        "user": user,
+        "user": dict(user),
     }
