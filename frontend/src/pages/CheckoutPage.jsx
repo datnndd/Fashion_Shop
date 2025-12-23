@@ -3,7 +3,15 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { formatPriceVND } from '../utils/currency';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
+
 import api from '../services/api';
+
+// Stripe Imports
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements } from '@stripe/react-stripe-js';
+import CheckoutForm from '../components/CheckoutForm';
+
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLIC_KEY);
 
 const SHIPPING_OPTIONS = {
     standard: { label: 'Standard Shipping', description: '4-6 business days', price: 30000 },
@@ -44,6 +52,9 @@ const CheckoutPage = () => {
     const [orderError, setOrderError] = useState('');
     const [hasOrderPlaced, setHasOrderPlaced] = useState(false);
 
+    // Stripe State
+    const [clientSecret, setClientSecret] = useState("");
+
     const selectedIds = location.state?.selectedIds || null;
     const items = cart?.items || [];
     const filteredItems = useMemo(() => {
@@ -55,6 +66,33 @@ const CheckoutPage = () => {
     const subtotal = filteredItems.reduce((sum, item) => sum + (item.line_total || 0), 0);
     const shipping = SHIPPING_OPTIONS[shippingMethod]?.price ?? 0;
     const total = Math.max(0, subtotal - discountAmount + shipping);
+
+    // Create Payment Intent when total changes or method switches to card
+    useEffect(() => {
+        if (paymentMethod === 'card' && total > 0 && selectedAddressId) {
+            // Check if we need to secure order placement first or just intent
+            // Here just create intent
+            const createIntent = async () => {
+                try {
+                    const { client_secret } = await api.payments.createIntent({
+                        shipping_address_id: selectedAddressId,
+                        shipping_method: shippingMethod,
+                        discount_code: appliedDiscount?.code,
+                        cart_item_ids: selectedIds
+                    });
+                    setClientSecret(client_secret);
+                } catch (err) {
+                    console.error("Failed to init stripe:", err);
+                    setOrderError("Could not initialize payment. Please try again.");
+                }
+            };
+            createIntent();
+        } else {
+            setClientSecret(""); // Reset if not card
+        }
+    }, [paymentMethod, total, shippingMethod, appliedDiscount, selectedIds, selectedAddressId]);
+
+
 
     useEffect(() => {
         if (!authLoading && !isAuthenticated) {
@@ -456,8 +494,8 @@ const CheckoutPage = () => {
                                                     <label
                                                         key={address.shipping_address_id}
                                                         className={`relative flex items-start gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${selectedAddressId === address.shipping_address_id
-                                                                ? 'border-[#d411d4] bg-[#d411d4]/5'
-                                                                : 'border-[#482348] bg-[#2d152d] hover:border-gray-600'
+                                                            ? 'border-[#d411d4] bg-[#d411d4]/5'
+                                                            : 'border-[#482348] bg-[#2d152d] hover:border-gray-600'
                                                             }`}
                                                     >
                                                         <input
@@ -549,19 +587,40 @@ const CheckoutPage = () => {
                                 </div>
                             </section>
 
-                            <div className="flex flex-col-reverse sm:flex-row sm:justify-between items-center gap-4 mt-8 pt-6 border-t border-[#482348]">
-                                <Link to="/cart" preventScrollReset className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors text-sm font-medium py-3">
-                                    <span className="material-symbols-outlined text-lg">arrow_back</span>
-                                    Return to Cart
-                                </Link>
-                                <button
-                                    type="button"
-                                    onClick={handlePlaceOrder}
-                                    disabled={disablePlaceOrder}
-                                    className={`w-full sm:w-auto bg-[#d411d4] hover:bg-[#d411d4]/90 text-white font-bold py-4 px-12 rounded-lg transition-all transform hover:scale-[1.02] shadow-lg shadow-[#d411d4]/20 text-lg tracking-wide uppercase ${disablePlaceOrder ? 'pointer-events-none opacity-60' : ''}`}
-                                >
-                                    {placingOrder ? 'Placing Order...' : 'Place Order'}
-                                </button>
+                            <div className="mt-8 pt-6 border-t border-[#482348]">
+                                {paymentMethod === 'card' && clientSecret ? (
+                                    <Elements options={{ clientSecret, theme: 'night', appearance: { theme: 'night', variables: { colorPrimary: '#d411d4' } } }} stripe={stripePromise}>
+                                        <CheckoutForm
+                                            amount={total}
+                                            onSuccess={async (paymentIntent) => {
+                                                // After stripe success, we should formally place the order in backend
+                                                // Ideally, backend webhook handles this, but for UX we can call placeOrder with transaction info or trust the previous intent creation
+                                                // We will call handlePlaceOrder but with payment_status=paid if we modified backend to support it, 
+                                                // OR just rely on the webhook.
+                                                // For this simple integration, we'll proceed to place order logic.
+                                                // Actually, handlePlaceOrder creates 'pending' order.
+                                                // We might want to pass transaction ID.
+                                                await handlePlaceOrder();
+                                            }}
+                                            onError={(msg) => setOrderError(msg)}
+                                        />
+                                    </Elements>
+                                ) : (
+                                    <div className="flex flex-col-reverse sm:flex-row sm:justify-between items-center gap-4">
+                                        <Link to="/cart" preventScrollReset className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors text-sm font-medium py-3">
+                                            <span className="material-symbols-outlined text-lg">arrow_back</span>
+                                            Return to Cart
+                                        </Link>
+                                        <button
+                                            type="button"
+                                            onClick={handlePlaceOrder}
+                                            disabled={disablePlaceOrder}
+                                            className={`w-full sm:w-auto bg-[#d411d4] hover:bg-[#d411d4]/90 text-white font-bold py-4 px-12 rounded-lg transition-all transform hover:scale-[1.02] shadow-lg shadow-[#d411d4]/20 text-lg tracking-wide uppercase ${disablePlaceOrder ? 'pointer-events-none opacity-60' : ''}`}
+                                        >
+                                            {placingOrder ? 'Placing Order...' : 'Place Order'}
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                             {orderError && (
                                 <p className="text-sm text-red-400 text-center sm:text-right -mt-2">{orderError}</p>

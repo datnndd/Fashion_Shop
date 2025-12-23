@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { formatPriceVND } from '../../utils/currency';
 import { productsAPI, categoriesAPI, uploadAPI } from '../../services/api';
 
-const API_BASE = 'http://localhost:8000';
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 const AdminProducts = () => {
     const [searchQuery, setSearchQuery] = useState('');

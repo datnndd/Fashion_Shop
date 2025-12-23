@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from app.core.config import settings
 from app.db.init_db import init_models
 from app.db.session import engine
-from app.routers import admin, auth, catalog, cart, health, location, reviews, upload, users, orders, dashboard, marketing
+from app.routers import admin, auth, catalog, cart, health, location, reviews, upload, users, orders, dashboard, marketing, payments
 
 
 @asynccontextmanager
@@ -45,3 +45,4 @@ app.include_router(orders.router)
 app.include_router(dashboard.router)
 app.include_router(cart.router)
 app.include_router(marketing.router)
+app.include_router(payments.router)

@@ -3,7 +3,7 @@
  * Handles all API calls to the backend
  */
 
-const API_BASE = 'http://localhost:8000';
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 /**
  * Generic fetch wrapper with error handling
@@ -471,6 +471,18 @@ export const uploadAPI = {
     },
 };
 
+// Payments API
+export const paymentsAPI = {
+    createIntent: (data) => {
+        const token = localStorage.getItem('token');
+        return fetchAPI('/payments/create-payment-intent', {
+            method: 'POST',
+            body: JSON.stringify(data),
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+    }
+};
+
 // Export a default API object for convenience
 const api = {
     products: productsAPI,
@@ -485,7 +497,9 @@ const api = {
     dashboard: dashboardAPI,
     addresses: addressesAPI,
     locations: locationsAPI,
+    locations: locationsAPI,
     upload: uploadAPI,
+    payments: paymentsAPI,
 };
 
 export default api;
