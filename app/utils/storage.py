@@ -7,9 +7,6 @@ from app.core.config import settings
 class SupabaseStorage:
     def __init__(self):
         self.client: Client = None
-        import os
-        print(f"Storage Init - CWD: {os.getcwd()}")
-        print(f"Storage Init - Supabase URL: {settings.supabase_url[:10] if settings.supabase_url else 'None'}...")
         
         if settings.supabase_url and settings.supabase_key:
             try:
