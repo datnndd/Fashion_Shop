@@ -75,8 +75,11 @@ class Product(Base):
         # Extract unique hex colors
         unique_colors = set()
         for v in self.variants:
-            if v.attributes and "color" in v.attributes:
-                unique_colors.add(v.attributes["color"])
+            attrs = v.attributes
+            if isinstance(attrs, dict):
+                color = attrs.get("color")
+                if isinstance(color, str) and color.strip():
+                    unique_colors.add(color)
         return list(unique_colors)
 
 

@@ -312,8 +312,16 @@ def _extract_colors(variants: list[dict]) -> list[str]:
     """Extract unique colors from variants."""
     colors = set()
     for v in variants:
-        if v.get("attributes") and isinstance(v["attributes"], dict) and "color" in v["attributes"]:
-            colors.add(v["attributes"]["color"])
+        attrs = v.get("attributes")
+        if isinstance(attrs, str):
+            try:
+                attrs = json.loads(attrs)
+            except json.JSONDecodeError:
+                attrs = None
+        if isinstance(attrs, dict):
+            color = attrs.get("color")
+            if isinstance(color, str) and color.strip():
+                colors.add(color)
     return list(colors)
 
 
