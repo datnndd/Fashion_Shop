@@ -442,8 +442,7 @@ const ProductDetailPage = () => {
                             )}
                             {isSelectionAvailable && (
                                 <p className="text-xs text-[#c992c9]">
-                                    Available stock: {remainingStock === null ? 'Unlimited' : remainingStock}
-                                    {remainingStock !== null && existingCartQuantity > 0 ? ` (in cart: ${existingCartQuantity})` : ''}
+                                    Available stock: {availableStock === null ? 'Unlimited' : availableStock}
                                 </p>
                             )}
 

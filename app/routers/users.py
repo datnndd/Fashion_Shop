@@ -218,6 +218,73 @@ async def get_my_orders(
     return result
 
 
+@router.post("/me/orders/{order_id}/cancel", response_model=OrderRead)
+async def cancel_my_order(
+    order_id: int,
+    session: AsyncSession = Depends(get_session),
+    current_user: dict = Depends(get_current_user),
+) -> OrderRead:
+    """
+    Allow a customer to cancel their own pending order.
+    """
+    existing_result = await session.execute(
+        text("SELECT * FROM orders WHERE order_id = :order_id AND user_id = :user_id"),
+        {"order_id": order_id, "user_id": current_user["user_id"]},
+    )
+    existing = existing_result.mappings().one_or_none()
+    if not existing:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found")
+    if existing["status"] != "pending":
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only pending orders can be cancelled")
+
+    # Restock product variants for this order (only where stock is tracked)
+    items_result = await session.execute(
+        text(
+            """
+            SELECT oi.product_variant_id, oi.quantity, pv.stock
+            FROM order_items oi
+            LEFT JOIN product_variants pv ON pv.variant_id = oi.product_variant_id
+            WHERE oi.order_id = :order_id
+            """
+        ),
+        {"order_id": order_id},
+    )
+    for item in items_result.mappings().all():
+        variant_id = item["product_variant_id"]
+        stock = item["stock"]
+        qty = item["quantity"]
+        if variant_id is None or stock is None:
+            continue
+        await session.execute(
+            text("UPDATE product_variants SET stock = :stock WHERE variant_id = :variant_id"),
+            {"stock": max(stock + qty, 0), "variant_id": variant_id},
+        )
+
+    update_result = await session.execute(
+        text("UPDATE orders SET status = :status, updated_at = NOW() WHERE order_id = :order_id RETURNING *"),
+        {"status": "cancelled", "order_id": order_id},
+    )
+    order = dict(update_result.mappings().one())
+    await session.commit()
+
+    items_result = await session.execute(
+        text("SELECT * FROM order_items WHERE order_id = :order_id"),
+        {"order_id": order_id},
+    )
+    order["items"] = [dict(item) for item in items_result.mappings().all()]
+
+    if order.get("shipping_address_id"):
+        sa_result = await session.execute(
+            text("SELECT * FROM shipping_addresses WHERE shipping_address_id = :sa_id"),
+            {"sa_id": order["shipping_address_id"]},
+        )
+        sa = sa_result.mappings().one_or_none()
+        if sa:
+            order["shipping_address"] = dict(sa)
+
+    return order
+
+
 @router.get("/{user_id}", response_model=UserRead)
 async def get_user(user_id: int, session: AsyncSession = Depends(get_session)) -> UserRead:
     """

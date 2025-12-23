@@ -114,18 +114,8 @@ const ProductsPage = () => {
                 if (maxPrice) params.maxPrice = parseInt(maxPrice, 10);
 
                 const data = await productsAPI.list(params);
-                const filteredData =
-                    categoryFilterIds && categoryFilterIds.length > 0
-                        ? data.filter((product) => {
-                            const productCategories = product.categories?.map((c) => c.toString()) || [];
-                            return (
-                                categoryFilterIds.includes(product.category_id?.toString()) ||
-                                productCategories.some((cid) => categoryFilterIds.includes(cid))
-                            );
-                        })
-                        : data;
-                setProducts(filteredData);
-                setHasMore(filteredData.length === limit && data.length === limit);
+                setProducts(data);
+                setHasMore(data.length === limit);
             } catch (error) {
                 console.error('Failed to fetch data:', error);
             } finally {
@@ -172,11 +162,10 @@ const ProductsPage = () => {
                 <div key={cat.category_id} className="space-y-1">
                     <div
                         onClick={() => handleCategoryChange(cat.category_id.toString())}
-                        className={`w-full flex items-center gap-2 rounded-xl transition-colors text-left cursor-pointer ${
-                            isActive
+                        className={`w-full flex items-center gap-2 rounded-xl transition-colors text-left cursor-pointer ${isActive
                                 ? 'bg-slate-100 dark:bg-white/10 text-slate-900 dark:text-white shadow-sm'
                                 : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/5'
-                        }`}
+                            }`}
                         style={{ paddingLeft: `${16 + level * 12}px`, paddingRight: '12px', paddingTop: '12px', paddingBottom: '12px' }}
                     >
                         <span className="font-medium flex-1">{cat.name}</span>
@@ -191,9 +180,8 @@ const ProductsPage = () => {
                                 aria-label={isExpanded ? 'Collapse' : 'Expand'}
                             >
                                 <span
-                                    className={`material-symbols-outlined text-slate-400 dark:text-slate-300 text-sm transition-transform ${
-                                        isExpanded ? 'rotate-180' : ''
-                                    }`}
+                                    className={`material-symbols-outlined text-slate-400 dark:text-slate-300 text-sm transition-transform ${isExpanded ? 'rotate-180' : ''
+                                        }`}
                                 >
                                     expand_more
                                 </span>
@@ -243,11 +231,10 @@ const ProductsPage = () => {
                                     setIsSaleFilter((prev) => !prev);
                                     setPage(1);
                                 }}
-                                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors text-left ${
-                                    isSaleFilter
+                                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors text-left ${isSaleFilter
                                         ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-100'
                                         : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5'
-                                }`}
+                                    }`}
                             >
                                 <span className="material-symbols-outlined text-sm opacity-70">local_offer</span>
                                 <span>Sale</span>
@@ -257,11 +244,10 @@ const ProductsPage = () => {
                                     setIsNewFilter((prev) => !prev);
                                     setPage(1);
                                 }}
-                                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors text-left ${
-                                    isNewFilter
+                                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-colors text-left ${isNewFilter
                                         ? 'bg-sky-50 text-sky-700 dark:bg-sky-500/10 dark:text-sky-100'
                                         : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/5'
-                                }`}
+                                    }`}
                             >
                                 <span className="material-symbols-outlined text-sm opacity-70 text-orange-400">whatshot</span>
                                 <span>New</span>
@@ -344,8 +330,8 @@ const ProductsPage = () => {
                                     className="w-full appearance-none bg-white dark:bg-[#13132b] border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-white pl-4 pr-10 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500/50 cursor-pointer"
                                 >
                                     <option value="newest">Default</option>
-                                    <option value="price_desc">Price: Low-High</option>
-                                    <option value="price_asc">Price: High-Low</option>
+                                    <option value="price_asc">Price: Low-High</option>
+                                    <option value="price_desc">Price: High-Low</option>
                                 </select>
                                 <span className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
                                     <span className="material-symbols-outlined">expand_more</span>

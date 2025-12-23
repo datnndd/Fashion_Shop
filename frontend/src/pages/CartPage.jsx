@@ -200,6 +200,8 @@ const CartPage = () => {
                                             const colorValue = attrs.color || '#482348';
                                             const sizeLabel = attrs.size || attrs.size_name || 'Free size';
                                             const { availableStock, isAvailable, maxSelectable } = getAvailability(item);
+                                            const variantImages = Array.isArray(item.variant_images) ? item.variant_images : [];
+                                            const variantThumbnail = item.variant_thumbnail || variantImages[0] || item.product.thumbnail;
 
                                             return (
                                                 <tr key={item.cart_item_id} className="group hover:bg-[#482348]/10 transition-colors">
@@ -215,7 +217,7 @@ const CartPage = () => {
                                                     <td className="px-6 py-6">
                                                         <div className="flex gap-4 md:gap-6 items-center">
                                                             <div className="relative w-20 h-20 md:w-24 md:h-24 rounded-lg overflow-hidden flex-shrink-0 bg-gray-800 border border-[#482348] group-hover:border-[#d411d4] transition-colors">
-                                                                <img alt={item.product.name} className="w-full h-full object-cover" src={item.product.thumbnail} />
+                                                                <img alt={item.product.name} className="w-full h-full object-cover" src={variantThumbnail} />
                                                             </div>
                                                             <div className="flex flex-col gap-1">
                                                                 <h3 className="font-bold text-lg leading-tight">{item.product.name}</h3>
@@ -226,30 +228,12 @@ const CartPage = () => {
                                                                 <span className="text-sm text-[#c992c9] mt-1">Size: {sizeLabel}</span>
                                                                 {!isAvailable && (
                                                                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 text-xs font-semibold">
-                                                                        <span className="material-symbols-outlined text-[12px]">error</span>
+
                                                                         Hết hàng
-                                                                    </span>
-                                                                )}
-                                                                {isAvailable && availableStock !== null && (
-                                                                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${item.quantity > availableStock
-                                                                        ? 'bg-red-500/20 text-red-400'
-                                                                        : availableStock <= 5
-                                                                            ? 'bg-yellow-500/20 text-yellow-400'
-                                                                            : 'bg-green-500/20 text-green-400'
-                                                                        }`}>
-                                                                        <span className="material-symbols-outlined text-[12px]">inventory_2</span>
-                                                                        Còn {availableStock} sản phẩm
-                                                                    </span>
-                                                                )}
-                                                                {isAvailable && availableStock === null && (
-                                                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 text-xs font-semibold">
-                                                                        <span className="material-symbols-outlined text-[12px]">all_inclusive</span>
-                                                                        Không giới hạn
                                                                     </span>
                                                                 )}
                                                                 {isAvailable && availableStock !== null && item.quantity > availableStock && (
                                                                     <span className="inline-flex items-center gap-1 text-xs text-red-400 mt-1">
-                                                                        <span className="material-symbols-outlined text-[12px]">warning</span>
                                                                         Số lượng vượt quá tồn kho!
                                                                     </span>
                                                                 )}
@@ -299,12 +283,7 @@ const CartPage = () => {
                                                                     <span className="material-symbols-outlined text-[16px]">add</span>
                                                                 </button>
                                                             </div>
-                                                            {availableStock !== null && (
-                                                                <span className={`text-[11px] font-medium ${item.quantity > availableStock ? 'text-red-400' : 'text-[#c992c9]'
-                                                                    }`}>
-                                                                    {item.quantity} / {availableStock}
-                                                                </span>
-                                                            )}
+
                                                         </div>
                                                     </td>
                                                     <td className="px-6 py-6 text-right">
@@ -338,41 +317,10 @@ const CartPage = () => {
                     <div className="lg:w-[400px] flex-shrink-0">
                         <div className="sticky top-28 flex flex-col gap-6 rounded-xl border border-[#482348] bg-[#2a152a]/50 p-6 md:p-8 backdrop-blur-sm shadow-2xl shadow-[#d411d4]/5">
                             <h2 className="text-2xl font-bold">Order Summary</h2>
-                            {/* Stats */}
-                            <div className="flex flex-col gap-4 border-b border-[#482348] pb-6">
-                                <div className="flex justify-between items-center">
-                                    <p className="text-[#c992c9]">Subtotal</p>
-                                    <p className="font-medium">{formatPriceVND(selectedTotal)}</p>
-                                </div>
-                                <div className="flex justify-between items-center">
-                                    <p className="text-[#c992c9]">Shipping Estimate</p>
-                                    <p className="text-[#d411d4] font-medium">Free</p>
-                                </div>
-                                <div className="flex justify-between items-center">
-                                    <p className="text-[#c992c9]">Tax</p>
-                                    <p className="font-medium">{formatPriceVND(0)}</p>
-                                </div>
-                            </div>
-                            {/* Promo Code */}
-                            <div className="flex flex-col gap-2">
-                                <label className="text-xs font-bold text-[#c992c9] uppercase tracking-wider">Promo Code</label>
-                                <div className="flex w-full items-stretch rounded-lg group">
-                                    <input
-                                        className="flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-l-lg text-white focus:outline-0 focus:ring-1 focus:ring-[#d411d4] border border-[#482348] bg-[#221022]/80 focus:border-[#d411d4] h-12 placeholder:text-[#c992c9]/50 px-4 text-sm font-normal leading-normal transition-all"
-                                        placeholder="Enter code"
-                                    />
-                                    <button className="text-white bg-[#482348] hover:bg-[#d411d4] transition-colors border border-l-0 border-[#482348] flex items-center justify-center px-4 rounded-r-lg font-medium text-sm">
-                                        Apply
-                                    </button>
-                                </div>
-                            </div>
                             {/* Total */}
-                            <div className="flex justify-between items-end border-t border-[#482348] pt-6 mt-2">
+                            <div className="flex justify-between items-end border-t border-[#482348] pt-2">
                                 <p className="text-lg font-bold">Total</p>
-                                <div className="text-right">
-                                    <p className="text-3xl font-black tracking-tight leading-none">{formatPriceVND(selectedTotal)}</p>
-                                    <p className="text-xs text-[#c992c9] mt-1">Including VAT</p>
-                                </div>
+                                <p className="text-3xl font-black tracking-tight leading-none">{formatPriceVND(selectedTotal)}</p>
                             </div>
                             {/* Checkout Button */}
                             <button

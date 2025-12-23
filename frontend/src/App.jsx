@@ -9,7 +9,6 @@ import ProductDetailPage from './pages/ProductDetailPage';
 import CartPage from './pages/CartPage';
 import CheckoutPage from './pages/CheckoutPage';
 import ContactPage from './pages/ContactPage';
-import OrderConfirmationPage from './pages/OrderConfirmationPage';
 import AccountPage from './pages/AccountPage';
 
 // Admin pages
@@ -133,15 +132,6 @@ const AppContent = () => {
 
         {/* Pages without standard Header/Footer (use their own) */}
         <Route path="/checkout" element={<CheckoutPage />} />
-        <Route
-          path="/order-confirmation"
-          element={
-            <>
-              <Header />
-              <OrderConfirmationPage />
-            </>
-          }
-        />
 
         <Route
           path="/login"

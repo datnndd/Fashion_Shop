@@ -1,7 +1,18 @@
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, JSON, Numeric, String, Text, func
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, JSON, Numeric, String, Table, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
+
+
+# Junction table for many-to-many relationship between products and categories
+product_categories = Table(
+    "product_categories",
+    Base.metadata,
+    Column("product_id", Integer, ForeignKey("products.product_id", ondelete="CASCADE"), primary_key=True),
+    Column("category_id", Integer, ForeignKey("categories.category_id", ondelete="CASCADE"), primary_key=True),
+)
+
+
 
 
 class Category(Base):

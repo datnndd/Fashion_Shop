@@ -276,6 +276,13 @@ export const authAPI = {
             headers: token ? { Authorization: `Bearer ${token}` } : {}
         });
     },
+    cancelMyOrder: (orderId) => {
+        const token = localStorage.getItem('token');
+        return fetchAPI(`/users/me/orders/${orderId}/cancel`, {
+            method: 'POST',
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+    },
 };
 
 // Cart API
@@ -309,19 +316,27 @@ export const cartAPI = {
             headers: token ? { Authorization: `Bearer ${token}` } : {}
         });
     },
+    checkout: (data) => {
+        const token = localStorage.getItem('token');
+        return fetchAPI('/cart/checkout', {
+            method: 'POST',
+            body: JSON.stringify(data),
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+    },
 };
 
 // Addresses API
 export const addressesAPI = {
     list: () => {
         const token = localStorage.getItem('token');
-        return fetchAPI('/locations/me/addresses', {
+        return fetchAPI('/locations/me/shipping-addresses', {
             headers: token ? { Authorization: `Bearer ${token}` } : {}
         });
     },
     create: (data) => {
         const token = localStorage.getItem('token');
-        return fetchAPI('/locations/me/addresses', {
+        return fetchAPI('/locations/me/shipping-addresses', {
             method: 'POST',
             body: JSON.stringify(data),
             headers: token ? { Authorization: `Bearer ${token}` } : {}
@@ -329,7 +344,7 @@ export const addressesAPI = {
     },
     update: (addressId, data) => {
         const token = localStorage.getItem('token');
-        return fetchAPI(`/locations/me/addresses/${addressId}`, {
+        return fetchAPI(`/locations/me/shipping-addresses/${addressId}`, {
             method: 'PUT',
             body: JSON.stringify(data),
             headers: token ? { Authorization: `Bearer ${token}` } : {}
@@ -337,7 +352,7 @@ export const addressesAPI = {
     },
     delete: (addressId) => {
         const token = localStorage.getItem('token');
-        return fetchAPI(`/locations/me/addresses/${addressId}`, {
+        return fetchAPI(`/locations/me/shipping-addresses/${addressId}`, {
             method: 'DELETE',
             headers: token ? { Authorization: `Bearer ${token}` } : {}
         });

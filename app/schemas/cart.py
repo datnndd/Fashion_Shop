@@ -20,6 +20,8 @@ class CartItemRead(BaseModel):
     product_variant_id: int
     quantity: int
     variant_attributes: Optional[dict] = None
+    variant_images: list[str] = Field(default_factory=list)
+    variant_thumbnail: Optional[str] = None
     available_stock: Optional[int] = Field(
         default=None,
         description="Current stock for the selected variant; null means unknown or unlimited",

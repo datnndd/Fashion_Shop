@@ -51,6 +51,20 @@ async def _get_categories_for_products(session: AsyncSession, product_ids: list[
         mapping.setdefault(row.product_id, []).append(row.category_id)
     return mapping
 
+async def _get_category_descendants(session: AsyncSession, category_id: int) -> list[int]:
+    """Get all descendant category IDs including the parent itself."""
+    query = text("""
+        WITH RECURSIVE cat_tree AS (
+            SELECT category_id FROM categories WHERE category_id = :category_id
+            UNION ALL
+            SELECT c.category_id FROM categories c
+            JOIN cat_tree ct ON c.parent_id = ct.category_id
+        )
+        SELECT category_id FROM cat_tree
+    """)
+    result = await session.execute(query, {"category_id": category_id})
+    return [row[0] for row in result.all()]
+
 
 # ==================== CATEGORIES ====================
 
@@ -546,16 +560,18 @@ async def list_products(
         conditions.append("p.base_price <= :max_price")
         params["max_price"] = max_price
     if category_id is not None:
+        # Get all subcategories recursively so that parent categories show child products
+        all_cat_ids = await _get_category_descendants(session, category_id)
         conditions.append("""
             (
-                p.category_id = :category_id
+                p.category_id = ANY(:category_ids)
                 OR EXISTS (
                     SELECT 1 FROM product_categories pc
-                    WHERE pc.product_id = p.product_id AND pc.category_id = :category_id
+                    WHERE pc.product_id = p.product_id AND pc.category_id = ANY(:category_ids)
                 )
             )
         """)
-        params["category_id"] = category_id
+        params["category_ids"] = all_cat_ids
     if is_new is not None:
         conditions.append("p.is_new = :is_new")
         params["is_new"] = is_new

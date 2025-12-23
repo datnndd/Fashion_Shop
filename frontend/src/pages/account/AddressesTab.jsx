@@ -120,7 +120,7 @@ const AddressesTab = () => {
             };
 
             if (editingAddress) {
-                await addressesAPI.update(editingAddress.address_id, payload);
+                await addressesAPI.update(editingAddress.shipping_address_id, payload);
                 setMessage({ type: 'success', text: 'Address updated successfully!' });
             } else {
                 await addressesAPI.create(payload);
@@ -150,7 +150,7 @@ const AddressesTab = () => {
 
     const handleSetDefault = async (address) => {
         try {
-            await addressesAPI.update(address.address_id, { is_default: true });
+            await addressesAPI.update(address.shipping_address_id, { is_default: true });
             setMessage({ type: 'success', text: 'Default address updated!' });
             fetchAddresses();
         } catch (err) {
@@ -202,7 +202,7 @@ const AddressesTab = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {addresses.map((address) => (
                         <div
-                            key={address.address_id}
+                            key={address.shipping_address_id}
                             className={`bg-[#2d1b2d]/80 rounded-xl border p-5 relative ${address.is_default ? 'border-[#d411d4]' : 'border-[#4a2b4a]'
                                 }`}
                         >
@@ -236,7 +236,7 @@ const AddressesTab = () => {
                                     </button>
                                 )}
                                 <button
-                                    onClick={() => handleDelete(address.address_id)}
+                                    onClick={() => handleDelete(address.shipping_address_id)}
                                     className="flex items-center gap-1 px-3 py-1.5 text-sm bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition-colors ml-auto"
                                 >
                                     <span className="material-symbols-outlined text-base">delete</span>
