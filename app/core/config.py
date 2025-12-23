@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     secret_key: str = "supersecretkey"
     access_token_expire_minutes: int = 30
     stripe_secret_key: str = "sk_test_PLACEHOLDER"
-    allowed_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
+    allowed_origins: str = os.getenv("ALLOWED_ORIGINS", "*")
     supabase_url: str = os.getenv("SUPABASE_URL", "")
     # Support multiple common names for the key, including the user's specific typo
     supabase_key: str = os.getenv("SUPABASE_KEY") or os.getenv("SUPABASE_ANON_KEY") or os.getenv("SUPABASE_ANNOR_KEY") or ""
