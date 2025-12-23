@@ -254,16 +254,6 @@ const HomePage = () => {
                 </div>
             </section>
 
-            {/* FAB: Shop All */}
-            <div className="fixed bottom-6 right-6 z-40">
-                <Link
-                    to="/"
-                    className="flex items-center gap-3 bg-[#d411d4] hover:bg-[#b00eb0] text-white px-6 py-4 rounded-full shadow-[0_0_30px_rgba(212,17,212,0.4)] transition-all hover:scale-105 active:scale-95"
-                >
-                    <span className="material-symbols-outlined">shopping_bag</span>
-                    <span className="font-bold tracking-wide">Shop All</span>
-                </Link>
-            </div>
         </main>
     );
 };
