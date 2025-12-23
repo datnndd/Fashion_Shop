@@ -27,6 +27,7 @@ const ProductsPage = () => {
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);
     const [expandedCategories, setExpandedCategories] = useState(new Set());
+    const [galleryIndexes, setGalleryIndexes] = useState({});
 
     // Filters State initialized from URL
     const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '');
@@ -151,6 +152,30 @@ const ProductsPage = () => {
     const handlePriceApply = () => {
         setPage(1);
         setIsPriceOpen(false);
+    };
+
+    const getProductGallery = (product) => {
+        const gallery = [];
+        if (product.thumbnail) {
+            gallery.push(product.thumbnail);
+        }
+        if (Array.isArray(product.images)) {
+            product.images.forEach((img) => {
+                if (img && !gallery.includes(img)) {
+                    gallery.push(img);
+                }
+            });
+        }
+        return gallery;
+    };
+
+    const handleGalleryStep = (productId, total, direction) => {
+        if (total <= 1) return;
+        setGalleryIndexes((prev) => {
+            const current = prev[productId] ?? 0;
+            const next = ((current + direction) % total + total) % total;
+            return { ...prev, [productId]: next };
+        });
     };
 
     const renderCategoryList = (items, level = 0) =>
@@ -360,17 +385,69 @@ const ProductsPage = () => {
                                 >
                                     <div className="relative h-full bg-white dark:bg-[#16162c] rounded-2xl overflow-hidden p-4 flex flex-col gap-3 min-h-[340px]">
                                         <div className="relative aspect-[4/5] rounded-xl overflow-hidden bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900">
-                                            {product.thumbnail ? (
-                                                <img
-                                                    src={product.thumbnail}
-                                                    alt={product.name}
-                                                    className="object-cover w-full h-full group-hover:scale-110 transition-transform duration-500"
-                                                />
-                                            ) : (
-                                                <div className="w-full h-full flex items-center justify-center text-slate-300 dark:text-slate-600">
-                                                    <span className="material-symbols-outlined text-4xl">image</span>
-                                                </div>
-                                            )}
+                                            {(() => {
+                                                const gallery = getProductGallery(product);
+                                                const currentIndex = gallery.length > 0 ? Math.min(gallery.length - 1, galleryIndexes[product.product_id] ?? 0) : 0;
+                                                const activeImage = gallery[currentIndex];
+
+                                                if (!activeImage) {
+                                                    return (
+                                                        <div className="w-full h-full flex items-center justify-center text-slate-300 dark:text-slate-600">
+                                                            <span className="material-symbols-outlined text-4xl">image</span>
+                                                        </div>
+                                                    );
+                                                }
+
+                                                return (
+                                                    <>
+                                                        <img
+                                                            src={activeImage}
+                                                            alt={product.name}
+                                                            className="object-cover w-full h-full transition-transform duration-500 group-hover:scale-110"
+                                                        />
+
+                                                        {gallery.length > 1 && (
+                                                            <>
+                                                                <div className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex justify-between px-2 pointer-events-none">
+                                                                    <button
+                                                                        type="button"
+                                                                        className="pointer-events-auto bg-white/80 dark:bg-black/40 text-slate-700 dark:text-white rounded-full p-2 shadow hover:bg-white dark:hover:bg-black/60 transition"
+                                                                        onClick={(e) => {
+                                                                            e.preventDefault();
+                                                                            e.stopPropagation();
+                                                                            handleGalleryStep(product.product_id, gallery.length, -1);
+                                                                        }}
+                                                                        aria-label="Previous image"
+                                                                    >
+                                                                        <span className="material-symbols-outlined text-lg">chevron_left</span>
+                                                                    </button>
+                                                                    <button
+                                                                        type="button"
+                                                                        className="pointer-events-auto bg-white/80 dark:bg-black/40 text-slate-700 dark:text-white rounded-full p-2 shadow hover:bg-white dark:hover:bg-black/60 transition"
+                                                                        onClick={(e) => {
+                                                                            e.preventDefault();
+                                                                            e.stopPropagation();
+                                                                            handleGalleryStep(product.product_id, gallery.length, 1);
+                                                                        }}
+                                                                        aria-label="Next image"
+                                                                    >
+                                                                        <span className="material-symbols-outlined text-lg">chevron_right</span>
+                                                                    </button>
+                                                                </div>
+
+                                                                <div className="absolute bottom-3 inset-x-0 flex justify-center gap-1.5">
+                                                                    {gallery.map((_, dotIndex) => (
+                                                                        <span
+                                                                            key={dotIndex}
+                                                                            className={`h-1.5 rounded-full transition-all ${dotIndex === currentIndex ? 'w-6 bg-white' : 'w-2 bg-white/50'}`}
+                                                                        ></span>
+                                                                    ))}
+                                                                </div>
+                                                            </>
+                                                        )}
+                                                    </>
+                                                );
+                                            })()}
 
                                             {/* Badges */}
                                             {(product.is_new || product.is_sale) && (

@@ -47,6 +47,7 @@ const CheckoutPage = () => {
     const [appliedDiscount, setAppliedDiscount] = useState(null);
     const [discountAmount, setDiscountAmount] = useState(0);
     const [discountMessage, setDiscountMessage] = useState('');
+    const [validatingDiscount, setValidatingDiscount] = useState(false);
     const [paymentMethod, setPaymentMethod] = useState('cash');
     const [placingOrder, setPlacingOrder] = useState(false);
     const [orderError, setOrderError] = useState('');
@@ -262,30 +263,42 @@ const CheckoutPage = () => {
         });
     }, [discounts, subtotal]);
 
-    const handleApplyDiscount = (codeInput) => {
+    const handleApplyDiscount = async (codeInput) => {
         const code = (codeInput ?? discountCode).trim();
-        const match = eligibleDiscounts.find((d) => d.code.toLowerCase() === code.toLowerCase());
         if (!code) {
-            setDiscountMessage('Vui lòng nhập mã giảm giá');
-            return;
-        }
-        if (!match) {
-            setDiscountMessage('Mã giảm giá không hợp lệ hoặc không đủ điều kiện');
+            setDiscountMessage('Please enter a discount code');
             setAppliedDiscount(null);
             setDiscountAmount(0);
             return;
         }
-        const amount = computeDiscountAmount(match);
-        if (amount <= 0) {
-            setDiscountMessage('Đơn hàng chưa đạt điều kiện để áp dụng mã này');
+
+        setValidatingDiscount(true);
+        try {
+            const result = await api.cart.validateDiscount({
+                discount_code: code,
+                cart_item_ids: filteredItems.length > 0 ? filteredItems.map((item) => item.cart_item_id) : undefined,
+            });
+
+            const nextDiscount = result?.discount;
+            const amount = result?.discount_amount || 0;
+            if (!nextDiscount || amount <= 0) {
+                setAppliedDiscount(null);
+                setDiscountAmount(0);
+                setDiscountMessage('Order does not meet the requirements for this code');
+                return;
+            }
+
+            setAppliedDiscount(nextDiscount);
+            setDiscountAmount(amount);
+            setDiscountMessage(`Applied code ${nextDiscount.code}`);
+            setDiscountCode(nextDiscount.code);
+        } catch (error) {
             setAppliedDiscount(null);
             setDiscountAmount(0);
-            return;
+            setDiscountMessage(error.message || 'Unable to apply discount code');
+        } finally {
+            setValidatingDiscount(false);
         }
-        setAppliedDiscount(match);
-        setDiscountAmount(amount);
-        setDiscountMessage(`Đã áp dụng mã ${match.code}`);
-        setDiscountCode(match.code);
     };
 
     // Recompute discount when subtotal changes (e.g., cart updates)
@@ -294,7 +307,7 @@ const CheckoutPage = () => {
             const amount = computeDiscountAmount(appliedDiscount);
             setDiscountAmount(amount);
             if (amount === 0) {
-                setDiscountMessage('Đơn hàng không còn đủ điều kiện cho mã giảm giá đã chọn');
+                setDiscountMessage('Order no longer meets the requirements for the applied code');
             }
         }
     }, [appliedDiscount, subtotal]);
@@ -691,9 +704,10 @@ const CheckoutPage = () => {
                                             <button
                                                 type="button"
                                                 onClick={handleApplyDiscount}
-                                                className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                                                disabled={validatingDiscount}
+                                                className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                                             >
-                                                Apply
+                                                {validatingDiscount ? 'Applying...' : 'Apply'}
                                             </button>
                                         </div>
                                         {discountMessage && (
@@ -775,3 +789,6 @@ const CheckoutPage = () => {
 };
 
 export default CheckoutPage;
+
+
+

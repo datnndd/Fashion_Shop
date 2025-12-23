@@ -332,6 +332,14 @@ export const cartAPI = {
             headers: token ? { Authorization: `Bearer ${token}` } : {}
         });
     },
+    validateDiscount: (data) => {
+        const token = localStorage.getItem('token');
+        return fetchAPI('/cart/validate-discount', {
+            method: 'POST',
+            body: JSON.stringify(data),
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+    },
 };
 
 // Addresses API
