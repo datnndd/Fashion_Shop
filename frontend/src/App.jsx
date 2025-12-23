@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Header from './components/layout/Header';
 import Footer from './components/layout/Footer';
+import ChatBox from './components/ChatBox';
 import HomePage from './pages/HomePage';
 import AboutPage from './pages/AboutPage';
 import ProductsPage from './pages/ProductsPage';
@@ -48,6 +49,7 @@ const AppContent = () => {
                     color: white;
                 }
             `}</style>
+      <ChatBox />
       <Routes>
         {/* Pages with Header/Footer */}
         <Route
