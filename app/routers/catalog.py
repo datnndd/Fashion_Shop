@@ -28,14 +28,16 @@ async def _set_product_categories(session: AsyncSession, product_id: int, catego
         {"product_id": product_id}
     )
     if category_ids:
-        await session.execute(
-            text("""
-                INSERT INTO product_categories (product_id, category_id)
-                SELECT :product_id, UNNEST(:category_ids::int[])
-                ON CONFLICT DO NOTHING
-            """),
-            {"product_id": product_id, "category_ids": category_ids}
-        )
+        # Insert each category individually to avoid asyncpg array parameter issues
+        for cat_id in category_ids:
+            await session.execute(
+                text("""
+                    INSERT INTO product_categories (product_id, category_id)
+                    VALUES (:product_id, :category_id)
+                    ON CONFLICT DO NOTHING
+                """),
+                {"product_id": product_id, "category_id": cat_id}
+            )
 
 
 async def _get_categories_for_products(session: AsyncSession, product_ids: list[int]) -> dict[int, list[int]]:
@@ -384,7 +386,8 @@ async def update_product(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
 
     # Build dynamic update
-    update_data = payload.model_dump(exclude_unset=True, exclude={"variants"})
+    # Exclude 'categories' since it's stored in product_categories join table, not in products table
+    update_data = payload.model_dump(exclude_unset=True, exclude={"variants", "categories"})
     
     # Serialize JSON fields for asyncpg
     for k, v in update_data.items():
