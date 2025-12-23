@@ -14,6 +14,8 @@ const AddressesTab = () => {
     const [showModal, setShowModal] = useState(false);
     const [editingAddress, setEditingAddress] = useState(null);
     const [formData, setFormData] = useState({
+        recipient_name: '',
+        recipient_phone: '',
         province_id: '',
         ward_id: '',
         street: '',
@@ -77,6 +79,8 @@ const AddressesTab = () => {
     const openAddModal = () => {
         setEditingAddress(null);
         setFormData({
+            recipient_name: '',
+            recipient_phone: '',
             province_id: '',
             ward_id: '',
             street: '',
@@ -90,6 +94,8 @@ const AddressesTab = () => {
     const openEditModal = async (address) => {
         setEditingAddress(address);
         setFormData({
+            recipient_name: address.recipient_name,
+            recipient_phone: address.recipient_phone,
             province_id: address.province_id,
             ward_id: address.ward_id,
             street: address.street,
@@ -102,7 +108,14 @@ const AddressesTab = () => {
     };
 
     const handleSave = async () => {
-        if (!formData.province_id || !formData.ward_id || !formData.street || !formData.full_address) {
+        if (
+            !formData.recipient_name ||
+            !formData.recipient_phone ||
+            !formData.province_id ||
+            !formData.ward_id ||
+            !formData.street ||
+            !formData.full_address
+        ) {
             setMessage({ type: 'error', text: 'Please fill in all required fields' });
             return;
         }
@@ -112,6 +125,8 @@ const AddressesTab = () => {
             setMessage({ type: '', text: '' });
 
             const payload = {
+                recipient_name: formData.recipient_name,
+                recipient_phone: formData.recipient_phone,
                 province_id: parseInt(formData.province_id),
                 ward_id: parseInt(formData.ward_id),
                 street: formData.street,
@@ -258,6 +273,32 @@ const AddressesTab = () => {
                         </div>
 
                         <div className="p-6 space-y-4">
+                            {/* Recipient Name */}
+                            <div>
+                                <label className="block text-sm text-gray-400 mb-2">Recipient Name *</label>
+                                <input
+                                    type="text"
+                                    name="recipient_name"
+                                    value={formData.recipient_name}
+                                    onChange={handleInputChange}
+                                    placeholder="Full name"
+                                    className="w-full px-4 py-3 bg-[#1d101d] border border-[#4a2b4a] rounded-lg text-white focus:outline-none focus:border-[#d411d4] transition-colors"
+                                />
+                            </div>
+
+                            {/* Recipient Phone */}
+                            <div>
+                                <label className="block text-sm text-gray-400 mb-2">Phone Number *</label>
+                                <input
+                                    type="tel"
+                                    name="recipient_phone"
+                                    value={formData.recipient_phone}
+                                    onChange={handleInputChange}
+                                    placeholder="e.g. 0912345678"
+                                    className="w-full px-4 py-3 bg-[#1d101d] border border-[#4a2b4a] rounded-lg text-white focus:outline-none focus:border-[#d411d4] transition-colors"
+                                />
+                            </div>
+
                             {/* Province */}
                             <div>
                                 <label className="block text-sm text-gray-400 mb-2">Province/City *</label>
