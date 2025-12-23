@@ -198,6 +198,7 @@ const AdminProducts = () => {
             const templateColor = template?.color || '';
             const templatePrice = template?.price || '';
             const templateStock = template?.stock ?? 0;
+            const templateImages = Array.isArray(template?.images) ? [...template.images] : [];
             const existingCombos = new Set(
                 prev.variants.map(v => `${v.size || ''}|${v.color || ''}`)
             );
@@ -214,7 +215,7 @@ const AdminProducts = () => {
                         color: templateColor,
                         price: templatePrice,
                         stock: templateStock,
-                        images: []
+                        images: templateImages
                     };
                 })
                 .filter(Boolean);
