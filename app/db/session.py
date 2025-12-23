@@ -11,7 +11,11 @@ engine = create_async_engine(
     pool_pre_ping=True,
     connect_args={
         "ssl": "require",
-        "timeout": 10,
+        "timeout": 30,
+        "command_timeout": 30,
+        "server_settings": {
+            "jit": "off",
+        },
     },
 )
 
