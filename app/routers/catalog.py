@@ -369,11 +369,14 @@ async def delete_product(
 
 @router.get("/products", response_model=list[ProductRead])
 async def list_products(
+    q: str | None = Query(default=None, description="Search query"),
+    min_price: float | None = Query(default=None),
+    max_price: float | None = Query(default=None),
     category_id: int | None = Query(default=None),
     is_new: bool | None = Query(default=None),
     is_sale: bool | None = Query(default=None),
     is_published: bool | None = Query(default=True),
-    sort_by: str | None = Query(default=None, description="Sort field: 'price_asc', 'price_desc', 'newest'"),
+    sort_by: str | None = Query(default=None, description="Sort field: 'price_asc', 'price_desc', 'newest', 'best_selling'"),
     limit: int = Query(default=20, le=100),
     offset: int = Query(default=0),
     session: AsyncSession = Depends(get_session),
@@ -386,7 +389,16 @@ async def list_products(
     # Build query dynamically
     conditions = []
     params = {"limit": limit, "offset": offset}
-    
+
+    if q:
+        conditions.append("(name ILIKE :q OR description ILIKE :q)")
+        params["q"] = f"%{q}%"
+    if min_price is not None:
+        conditions.append("base_price >= :min_price")
+        params["min_price"] = min_price
+    if max_price is not None:
+        conditions.append("base_price <= :max_price")
+        params["max_price"] = max_price
     if category_id is not None:
         conditions.append("category_id = :category_id")
         params["category_id"] = category_id
@@ -405,14 +417,29 @@ async def list_products(
     where_clause = " WHERE " + " AND ".join(conditions) if conditions else ""
     
     # Sorting
-    if sort_by == "price_asc":
+    if sort_by == "best_selling":
+        # Join with order items to count sales
+        query = text(f"""
+            SELECT p.*, COALESCE(SUM(oi.quantity), 0) as total_sold
+            FROM products p
+            LEFT JOIN product_variants pv ON p.product_id = pv.product_id
+            LEFT JOIN order_items oi ON pv.variant_id = oi.product_variant_id
+            {where_clause}
+            GROUP BY p.product_id
+            ORDER BY total_sold DESC
+            LIMIT :limit OFFSET :offset
+        """)
+    elif sort_by == "price_asc":
         order_clause = "ORDER BY base_price ASC"
+        query = text(f"SELECT * FROM products{where_clause} {order_clause} LIMIT :limit OFFSET :offset")
     elif sort_by == "price_desc":
         order_clause = "ORDER BY base_price DESC"
+        query = text(f"SELECT * FROM products{where_clause} {order_clause} LIMIT :limit OFFSET :offset")
     else:
+        # Default newest
         order_clause = "ORDER BY created_at DESC"
-    
-    query = text(f"SELECT * FROM products{where_clause} {order_clause} LIMIT :limit OFFSET :offset")
+        query = text(f"SELECT * FROM products{where_clause} {order_clause} LIMIT :limit OFFSET :offset")
+
     result = await session.execute(query, params)
     products = [dict(p) for p in result.mappings().all()]
     

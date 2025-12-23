@@ -1,10 +1,34 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
 import { formatPriceVND } from '../utils/currency';
+import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
 
 const CheckoutPage = () => {
+    const navigate = useNavigate();
+    const { cart, cartCount, loading: cartLoading } = useCart();
+    const { isAuthenticated, loading: authLoading } = useAuth();
+
+    const items = cart?.items || [];
+    const subtotal = cart?.subtotal || 0;
+    const shipping = 0;
+    const taxes = 0;
+    const total = subtotal + shipping + taxes;
+
+    useEffect(() => {
+        if (!authLoading && !isAuthenticated) {
+            navigate('/login');
+        }
+    }, [authLoading, isAuthenticated, navigate]);
+
+    useEffect(() => {
+        if (!cartLoading && isAuthenticated && cartCount === 0) {
+            navigate('/cart');
+        }
+    }, [cartLoading, cartCount, isAuthenticated, navigate]);
+
     return (
         <div className="bg-[#221022] font-[Space_Grotesk] text-white min-h-screen flex flex-col">
-            {/* Header */}
             <header className="sticky top-0 z-50 border-b border-[#482348] bg-[#221022]/80 backdrop-blur-md">
                 <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -20,13 +44,10 @@ const CheckoutPage = () => {
                 </div>
             </header>
 
-            {/* Main Content Layout */}
             <main className="flex-grow">
                 <div className="max-w-7xl mx-auto px-6 py-8 lg:py-12">
                     <div className="lg:grid lg:grid-cols-12 lg:gap-12 xl:gap-20">
-                        {/* Left Column: Checkout Form */}
                         <div className="lg:col-span-7 xl:col-span-8 flex flex-col gap-10">
-                            {/* Breadcrumbs / Stepper */}
                             <nav aria-label="Progress">
                                 <ol className="flex items-center gap-4 text-sm font-medium" role="list">
                                     <li className="text-[#d411d4] flex items-center gap-2">
@@ -50,11 +71,10 @@ const CheckoutPage = () => {
                                 </ol>
                             </nav>
 
-                            {/* Step 1: Contact Information */}
                             <section className="space-y-6">
                                 <div className="flex justify-between items-end border-b border-[#482348] pb-4">
                                     <h2 className="text-2xl font-bold uppercase tracking-tight">Contact Info</h2>
-                                    <div className="text-sm text-[#d411d4] cursor-pointer hover:underline">Log in for faster checkout</div>
+                                    <div className="text-sm text-[#d411d4] cursor-pointer hover:underline">Use saved details</div>
                                 </div>
                                 <div className="grid gap-6">
                                     <label className="block">
@@ -78,7 +98,6 @@ const CheckoutPage = () => {
                                 </div>
                             </section>
 
-                            {/* Step 2: Shipping Address */}
                             <section className="space-y-6">
                                 <h2 className="text-2xl font-bold uppercase tracking-tight border-b border-[#482348] pb-4">Shipping Address</h2>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -146,7 +165,6 @@ const CheckoutPage = () => {
                                 </div>
                             </section>
 
-                            {/* Step 3: Shipping Method */}
                             <section className="space-y-6">
                                 <h2 className="text-2xl font-bold uppercase tracking-tight border-b border-[#482348] pb-4">Shipping Method</h2>
                                 <div className="space-y-3">
@@ -174,66 +192,69 @@ const CheckoutPage = () => {
                                 </div>
                             </section>
 
-                            {/* Navigation Actions */}
                             <div className="flex flex-col-reverse sm:flex-row sm:justify-between items-center gap-4 mt-8 pt-6 border-t border-[#482348]">
-                                <Link to="/cart" className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors text-sm font-medium py-3">
+                                <Link to="/cart" preventScrollReset className="flex items-center gap-2 text-gray-400 hover:text-white transition-colors text-sm font-medium py-3">
                                     <span className="material-symbols-outlined text-lg">arrow_back</span>
                                     Return to Cart
                                 </Link>
                                 <Link
                                     to="/order-confirmation"
-                                    className="w-full sm:w-auto bg-[#d411d4] hover:bg-[#d411d4]/90 text-white font-bold py-4 px-12 rounded-lg transition-all transform hover:scale-[1.02] shadow-lg shadow-[#d411d4]/20 text-lg tracking-wide uppercase"
+                                    className={`w-full sm:w-auto bg-[#d411d4] hover:bg-[#d411d4]/90 text-white font-bold py-4 px-12 rounded-lg transition-all transform hover:scale-[1.02] shadow-lg shadow-[#d411d4]/20 text-lg tracking-wide uppercase ${cartCount === 0 ? 'pointer-events-none opacity-60' : ''}`}
                                 >
                                     Continue to Payment
                                 </Link>
                             </div>
                         </div>
 
-                        {/* Right Column: Order Summary (Sticky) */}
                         <div className="lg:col-span-5 xl:col-span-4 mt-12 lg:mt-0">
                             <div className="sticky top-24 bg-[#2d152d] border border-[#482348] rounded-xl overflow-hidden shadow-2xl">
-                                {/* Header */}
                                 <div className="p-6 border-b border-[#482348] bg-white/5">
                                     <h3 className="text-lg font-bold uppercase tracking-wider">Order Summary</h3>
                                 </div>
-                                {/* Product List */}
                                 <div className="p-6 space-y-6 max-h-[400px] overflow-y-auto">
-                                    {/* Item 1 */}
-                                    <div className="flex gap-4">
-                                        <div className="relative w-20 h-24 flex-shrink-0 bg-gray-800 rounded-lg overflow-hidden border border-[#482348]">
-                                            <div
-                                                className="w-full h-full bg-cover bg-center"
-                                                style={{ backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuAnIS6E3tLSIw8847w_D0nnngEkdjxH_XSngAoAKXfUPjPQ_RVZ_g2a-SSsVl7soCdCHUuTXqAnT4tLzvLAUHfI1gH525M2_RTyI8uYmpLO8YMKGmn4Ul0JM6RTqwKc9FPSK1_KJGWIMJk-e4ip-pfYH0hscKrl1_MHCQS1JeB16uFC-trnUnVJHf68XOssJt5HA66iFezSQXXRv_8ZnbfrUAO0rjo8LL4B9bGnrjs83YtypT3l00W6DdPVdyaaLxwpN9zyEFEc-Ls')" }}
-                                            ></div>
-                                            <span className="absolute -top-2 -right-2 bg-gray-500 text-white text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full shadow-md">1</span>
+                                    {cartLoading ? (
+                                        <div className="space-y-3">
+                                            {[1, 2].map((i) => (
+                                                <div key={i} className="flex gap-4 animate-pulse">
+                                                    <div className="w-20 h-24 bg-gray-800 rounded-lg" />
+                                                    <div className="flex-1 space-y-2">
+                                                        <div className="h-4 bg-gray-700 rounded w-1/2" />
+                                                        <div className="h-3 bg-gray-700 rounded w-1/3" />
+                                                    </div>
+                                                </div>
+                                            ))}
                                         </div>
-                                        <div className="flex flex-1 flex-col justify-between py-1">
-                                            <div>
-                                                <h4 className="font-bold text-sm">Oversized Noir Hoodie</h4>
-                                                <p className="text-gray-400 text-xs mt-1">Size: M / Color: Black</p>
-                                            </div>
-                                            <p className="font-medium text-sm">{formatPriceVND(3125000)}</p>
-                                        </div>
-                                    </div>
-                                    {/* Item 2 */}
-                                    <div className="flex gap-4">
-                                        <div className="relative w-20 h-24 flex-shrink-0 bg-gray-800 rounded-lg overflow-hidden border border-[#482348]">
-                                            <div
-                                                className="w-full h-full bg-cover bg-center"
-                                                style={{ backgroundImage: "url('https://lh3.googleusercontent.com/aida-public/AB6AXuD0sBCkKjdapvYUGvUOvX3f2wrEM748ER5UJr-GMXs35xRSufnwgUhApxqVQhzCdbJBL6QiaX9L566W1pKSLZeqfmP-k-Kx-IOTZse1qSf-lEAszwSAstsQ1SEUTkTVCHrgl5-K9RmlApYpfVOvPvQeQJcDsKpSt-YVN0Ol748FXsZnEzEYsFedWVaxedUQzR6XGwDG3Evwou4ewZJ0jHXehAJtf9cVJ9fL60oRu-jtlXV5ZoHWyddK122Qm7-DCzNPNFxwbMohhFQ')" }}
-                                            ></div>
-                                            <span className="absolute -top-2 -right-2 bg-gray-500 text-white text-xs font-bold w-5 h-5 flex items-center justify-center rounded-full shadow-md">2</span>
-                                        </div>
-                                        <div className="flex flex-1 flex-col justify-between py-1">
-                                            <div>
-                                                <h4 className="font-bold text-sm">Neon Basic Tee</h4>
-                                                <p className="text-gray-400 text-xs mt-1">Size: L / Color: Hot Pink</p>
-                                            </div>
-                                            <p className="font-medium text-sm">{formatPriceVND(1125000)}</p>
-                                        </div>
-                                    </div>
+                                    ) : items.length === 0 ? (
+                                        <p className="text-sm text-[#c992c9]">Your cart is empty.</p>
+                                    ) : (
+                                        items.map((item) => {
+                                            const attrs = item.variant_attributes || {};
+                                            const colorName = attrs.color_name || attrs.color || 'Color';
+                                            const sizeLabel = attrs.size || attrs.size_name || 'Size';
+
+                                            return (
+                                                <div key={item.cart_item_id} className="flex gap-4">
+                                                    <div className="relative w-20 h-24 flex-shrink-0 bg-gray-800 rounded-lg overflow-hidden border border-[#482348]">
+                                                        <div
+                                                            className="w-full h-full bg-cover bg-center"
+                                                            style={{ backgroundImage: `url('${item.product.thumbnail}')` }}
+                                                        ></div>
+                                                        <span className="absolute -top-2 -right-2 bg-gray-500 text-white text-xs font-bold min-w-[24px] h-6 px-1 flex items-center justify-center rounded-full shadow-md">
+                                                            {item.quantity}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex flex-1 flex-col justify-between py-1">
+                                                        <div>
+                                                            <h4 className="font-bold text-sm line-clamp-2">{item.product.name}</h4>
+                                                            <p className="text-gray-400 text-xs mt-1">Size: {sizeLabel} / Color: {colorName}</p>
+                                                        </div>
+                                                        <p className="font-medium text-sm">{formatPriceVND(item.line_total)}</p>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })
+                                    )}
                                 </div>
-                                {/* Discount Code */}
                                 <div className="px-6 py-4 border-t border-[#482348] bg-[#221022]/30">
                                     <div className="flex gap-2">
                                         <input
@@ -244,33 +265,31 @@ const CheckoutPage = () => {
                                         <button className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">Apply</button>
                                     </div>
                                 </div>
-                                {/* Totals */}
                                 <div className="p-6 border-t border-[#482348] bg-[#221022]/30 space-y-3">
                                     <div className="flex justify-between text-sm text-gray-300">
                                         <span>Subtotal</span>
-                                        <span className="font-medium">{formatPriceVND(4250000)}</span>
+                                        <span className="font-medium">{formatPriceVND(subtotal)}</span>
                                     </div>
                                     <div className="flex justify-between text-sm text-gray-300">
                                         <div className="flex items-center gap-1">
                                             <span>Shipping</span>
                                             <span className="material-symbols-outlined text-gray-500 text-[16px] cursor-help">help</span>
                                         </div>
-                                        <span className="font-medium">{formatPriceVND(125000)}</span>
+                                        <span className="font-medium">{formatPriceVND(shipping)}</span>
                                     </div>
                                     <div className="flex justify-between text-sm text-gray-300">
                                         <span>Taxes (estimated)</span>
-                                        <span className="font-medium">{formatPriceVND(350000)}</span>
+                                        <span className="font-medium">{formatPriceVND(taxes)}</span>
                                     </div>
                                     <div className="border-t border-[#482348] my-4 pt-4 flex justify-between items-end">
                                         <span className="text-base font-bold">Total</span>
                                         <div className="flex items-baseline gap-1">
                                             <span className="text-xs text-gray-400">VND</span>
-                                            <span className="text-2xl font-bold text-[#d411d4] tracking-tight">{formatPriceVND(4725000)}</span>
+                                            <span className="text-2xl font-bold text-[#d411d4] tracking-tight">{formatPriceVND(total)}</span>
                                         </div>
                                     </div>
                                 </div>
                             </div>
-                            {/* Trust Signals */}
                             <div className="mt-6 flex flex-wrap justify-center gap-4 opacity-50 grayscale hover:grayscale-0 hover:opacity-100 transition-all duration-300">
                                 <span className="material-symbols-outlined text-4xl text-gray-400">credit_card</span>
                                 <span className="material-symbols-outlined text-4xl text-gray-400">account_balance</span>
@@ -281,10 +300,9 @@ const CheckoutPage = () => {
                 </div>
             </main>
 
-            {/* Simple Footer */}
             <footer className="border-t border-[#482348] py-8 mt-auto bg-[#2d152d]">
                 <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center gap-4">
-                    <p className="text-xs text-gray-500">© 2024 BasicColor Inc. All rights reserved.</p>
+                    <p className="text-xs text-gray-500">Ac 2024 BasicColor Inc. All rights reserved.</p>
                     <div className="flex gap-6 text-xs text-gray-400">
                         <a href="#" className="hover:text-[#d411d4] transition-colors">Refund Policy</a>
                         <a href="#" className="hover:text-[#d411d4] transition-colors">Privacy Policy</a>

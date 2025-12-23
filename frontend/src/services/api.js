@@ -54,6 +54,12 @@ export const productsAPI = {
     list: (params = {}) => {
         const searchParams = new URLSearchParams();
         if (params.categoryId) searchParams.append('category_id', params.categoryId);
+        if (params.categoryIds && Array.isArray(params.categoryIds)) {
+            params.categoryIds.forEach((id) => searchParams.append('category_ids', id));
+        }
+        if (params.q) searchParams.append('q', params.q);
+        if (params.minPrice) searchParams.append('min_price', params.minPrice);
+        if (params.maxPrice) searchParams.append('max_price', params.maxPrice);
         if (params.isNew !== undefined) searchParams.append('is_new', params.isNew);
         if (params.isSale !== undefined) searchParams.append('is_sale', params.isSale);
         if (params.sortBy) searchParams.append('sort_by', params.sortBy);
@@ -336,6 +342,39 @@ export const authAPI = {
     },
 };
 
+// Cart API (current user)
+export const cartAPI = {
+    getMyCart: () => {
+        const token = localStorage.getItem('token');
+        return fetchAPI('/cart', {
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+    },
+    addItem: ({ product_variant_id, quantity = 1 }) => {
+        const token = localStorage.getItem('token');
+        return fetchAPI('/cart/items', {
+            method: 'POST',
+            body: JSON.stringify({ product_variant_id, quantity }),
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+    },
+    updateItem: (cartItemId, quantity) => {
+        const token = localStorage.getItem('token');
+        return fetchAPI(`/cart/items/${cartItemId}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ quantity }),
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+    },
+    removeItem: (cartItemId) => {
+        const token = localStorage.getItem('token');
+        return fetchAPI(`/cart/items/${cartItemId}`, {
+            method: 'DELETE',
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+    },
+};
+
 // Addresses API (for current user)
 export const addressesAPI = {
     /**
@@ -505,6 +544,7 @@ const api = {
     categories: categoriesAPI,
     reviews: reviewsAPI,
     users: usersAPI,
+    cart: cartAPI,
     orders: ordersAPI,
     auth: authAPI,
     admin: adminAPI,

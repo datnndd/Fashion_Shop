@@ -1,8 +1,10 @@
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { formatPriceVND } from '../utils/currency';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 
 import { productsAPI, reviewsAPI } from '../services/api';
+import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
 
 const ProductDetailPage = () => {
     const { id } = useParams();
@@ -15,15 +17,16 @@ const ProductDetailPage = () => {
     const [selectedColor, setSelectedColor] = useState(0);
     const [selectedSize, setSelectedSize] = useState('M');
     const [quantity, setQuantity] = useState(1);
+    const [adding, setAdding] = useState(false);
+    const [actionError, setActionError] = useState('');
 
-    // Derived state
-    const colors = [];
-    const sizes = ['S', 'M', 'L', 'XL']; // Default sizes if not found
+    const navigate = useNavigate();
+    const { addToCart } = useCart();
+    const { isAuthenticated } = useAuth();
 
-    if (variants.length > 0) {
-        // Extract unique colors
+    const colors = useMemo(() => {
         const colorMap = new Map();
-        variants.forEach(v => {
+        variants.forEach((v) => {
             if (v.attributes && v.attributes.color && v.attributes.color_name) {
                 if (!colorMap.has(v.attributes.color_name)) {
                     colorMap.set(v.attributes.color_name, {
@@ -33,15 +36,60 @@ const ProductDetailPage = () => {
                 }
             }
         });
-        if (colorMap.size > 0) {
-            colors.push(...Array.from(colorMap.values()));
+        const list = Array.from(colorMap.values());
+        if (list.length === 0) {
+            return [{ name: 'Standard', value: '#222222' }];
         }
-    }
+        return list;
+    }, [variants]);
 
-    // Fallback colors if none found (e.g. for products with no variants yet)
-    if (colors.length === 0) {
-        colors.push({ name: 'Standard', value: '#222222' });
-    }
+    const sizes = useMemo(() => {
+        const sizeSet = new Set();
+        variants.forEach((v) => {
+            const attrs = v.attributes || {};
+            const sizeValue = attrs.size || attrs.size_name;
+            if (sizeValue) {
+                sizeSet.add(sizeValue);
+            }
+        });
+        if (sizeSet.size === 0) {
+            return ['S', 'M', 'L', 'XL'];
+        }
+        return Array.from(sizeSet);
+    }, [variants]);
+
+    useEffect(() => {
+        if (sizes.length > 0 && !sizes.includes(selectedSize)) {
+            setSelectedSize(sizes[0]);
+        }
+    }, [sizes, selectedSize]);
+
+    useEffect(() => {
+        if (colors.length > 0 && selectedColor >= colors.length) {
+            setSelectedColor(0);
+        }
+    }, [colors, selectedColor]);
+
+    const selectedVariant = useMemo(() => {
+        if (variants.length === 0) return null;
+        const targetColor = colors[selectedColor]?.name?.toString().toLowerCase();
+        const targetSize = selectedSize?.toString().toLowerCase();
+
+        const match = variants.find((variant) => {
+            const attrs = variant.attributes || {};
+            const variantColor = (attrs.color_name || attrs.color || '').toString().toLowerCase();
+            const variantSize = (attrs.size || attrs.size_name || '').toString().toLowerCase();
+            const colorMatch = targetColor ? variantColor === targetColor : true;
+            const sizeMatch = targetSize ? variantSize === targetSize : true;
+            return colorMatch && sizeMatch;
+        });
+
+        return match || variants[0];
+    }, [variants, colors, selectedColor, selectedSize]);
+
+    const variantPrice = selectedVariant?.price ?? product?.base_price ?? 0;
+    const discountPercent = product?.discount_percent || 0;
+    const finalPrice = discountPercent ? variantPrice * (1 - discountPercent / 100) : variantPrice;
 
     useEffect(() => {
         const fetchData = async () => {
@@ -82,6 +130,29 @@ const ProductDetailPage = () => {
     if (!product) {
         return <div className="min-h-screen bg-[#221022] text-white flex items-center justify-center">Product not found</div>;
     }
+
+    const handleAddToCart = async () => {
+        if (!selectedVariant) {
+            setActionError('No available variant for this selection.');
+            return;
+        }
+
+        if (!isAuthenticated) {
+            navigate('/login');
+            return;
+        }
+
+        setActionError('');
+        setAdding(true);
+        try {
+            await addToCart(selectedVariant.variant_id, quantity);
+            navigate('/cart', { preventScrollReset: true });
+        } catch (err) {
+            setActionError(err.message || 'Unable to add item to cart');
+        } finally {
+            setAdding(false);
+        }
+    };
 
     return (
         <div className="bg-[#221022] text-white font-[Space_Grotesk] min-h-screen">
@@ -145,7 +216,14 @@ const ProductDetailPage = () => {
                                     </button>
                                 </div>
                                 <div className="flex items-end gap-4">
-                                    <p className="text-3xl font-bold">{formatPriceVND(product.base_price)}</p>
+                                    {discountPercent > 0 ? (
+                                        <div className="flex items-baseline gap-3">
+                                            <p className="text-3xl font-bold text-[#d411d4]">{formatPriceVND(finalPrice)}</p>
+                                            <p className="text-lg text-gray-500 line-through">{formatPriceVND(variantPrice)}</p>
+                                        </div>
+                                    ) : (
+                                        <p className="text-3xl font-bold">{formatPriceVND(variantPrice)}</p>
+                                    )}
                                     {/* Rating */}
                                     <div className="flex items-center gap-1 mb-1.5 cursor-pointer group">
                                         <div className="flex text-[#d411d4]">
@@ -201,20 +279,13 @@ const ProductDetailPage = () => {
                                     {sizes.map((size) => (
                                         <button
                                             key={size}
-                                            onClick={() => size !== 'XL' && setSelectedSize(size)}
+                                            onClick={() => setSelectedSize(size)}
                                             className={`h-12 rounded-lg font-bold text-sm transition-all ${selectedSize === size
                                                 ? 'border border-[#d411d4] bg-[#d411d4]/10 text-[#d411d4]'
-                                                : size === 'XL'
-                                                    ? 'border border-[#482348] opacity-50 cursor-not-allowed relative overflow-hidden'
-                                                    : 'border border-[#482348] hover:border-[#d411d4] hover:text-[#d411d4]'
+                                                : 'border border-[#482348] hover:border-[#d411d4] hover:text-[#d411d4]'
                                                 }`}
                                         >
                                             {size}
-                                            {size === 'XL' && (
-                                                <div className="absolute inset-0 flex items-center justify-center">
-                                                    <div className="w-full h-[1px] bg-gray-400 rotate-45 transform"></div>
-                                                </div>
-                                            )}
                                         </button>
                                     ))}
                                 </div>
@@ -239,14 +310,17 @@ const ProductDetailPage = () => {
                                         </button>
                                     </div>
                                 </div>
-                                <Link
-                                    to="/cart"
-                                    className="flex-1 h-14 bg-[#d411d4] hover:bg-[#b00eb0] text-white rounded-lg font-bold text-lg tracking-wide transition-all shadow-lg shadow-[#d411d4]/25 flex items-center justify-center gap-2"
+                                <button
+                                    type="button"
+                                    onClick={handleAddToCart}
+                                    disabled={adding}
+                                    className="flex-1 h-14 bg-[#d411d4] hover:bg-[#b00eb0] disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-lg font-bold text-lg tracking-wide transition-all shadow-lg shadow-[#d411d4]/25 flex items-center justify-center gap-2"
                                 >
-                                    Add to Bag
+                                    {adding ? 'Adding...' : 'Add to Bag'}
                                     <span className="material-symbols-outlined">arrow_forward</span>
-                                </Link>
+                                </button>
                             </div>
+                            {actionError && <p className="text-red-300 text-sm">{actionError}</p>}
 
                             {/* Description Text */}
                             <p className="text-gray-300 leading-relaxed pt-2">

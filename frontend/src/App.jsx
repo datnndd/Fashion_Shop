@@ -27,6 +27,7 @@ import RegisterPage from './pages/RegisterPage';
 
 import { ThemeProvider, useTheme } from './context/ThemeContext';
 import { AuthProvider } from './context/AuthContext';
+import { CartProvider } from './context/CartContext';
 
 const AppContent = () => {
   const { theme } = useTheme();
@@ -182,7 +183,9 @@ function App() {
     <Router>
       <ThemeProvider>
         <AuthProvider>
-          <AppContent />
+          <CartProvider>
+            <AppContent />
+          </CartProvider>
         </AuthProvider>
       </ThemeProvider>
     </Router>

@@ -5,17 +5,22 @@ import { categoriesAPI, productsAPI } from '../services/api';
 
 const HomePage = () => {
     const [categories, setCategories] = useState([]);
-    const [trendingProducts, setTrendingProducts] = useState([]);
+    const [newProducts, setNewProducts] = useState([]);
+    const [bestSellers, setBestSellers] = useState([]);
 
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [categoriesData, productsData] = await Promise.all([
+                // Parallel fetch
+                const [categoriesData, newData, bestData] = await Promise.all([
                     categoriesAPI.list(true),
-                    productsAPI.list({ limit: 5, sort_by: 'newest' })
+                    productsAPI.list({ is_new: true, limit: 4 }),
+                    productsAPI.list({ sort_by: 'best_selling', limit: 4 })
                 ]);
+
                 setCategories(categoriesData);
-                setTrendingProducts(productsData);
+                setNewProducts(newData);
+                setBestSellers(bestData);
             } catch (error) {
                 console.error('Failed to fetch homepage data:', error);
             }
@@ -49,75 +54,187 @@ const HomePage = () => {
                 </div>
             </section>
 
-            {/* Color Navigation Grid */}
-            <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 w-full">
-                <div className="flex justify-between items-end mb-10">
-                    <div>
-                        <h3 className="text-3xl font-bold mb-2 text-white">Shop by Category</h3>
-                        <p className="text-gray-400 font-sans">Select your vibe.</p>
-                    </div>
-                    {/* View All Details Removed */}
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {categories.map((category, index) => (
-                        <div
-                            key={category.category_id}
-                            className="group relative aspect-[4/5] sm:aspect-square lg:aspect-[4/3] overflow-hidden rounded-xl cursor-default bg-white/5 border border-white/10"
-                        >
-                            <div className="absolute inset-0 p-8 flex flex-col justify-end">
-                                <span className="text-white/80 text-sm font-bold mb-1 translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-300">
-                                    0{index + 1}
-                                </span>
-                                <h4 className={`text-3xl font-bold text-white leading-none`}>
-                                    {category.name}
-                                </h4>
-                                <p className={`text-white/60 text-sm mt-2 max-h-0 overflow-hidden group-hover:max-h-20 transition-all duration-500 ease-out`}>
-                                    {category.description}
-                                </p>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            </section>
+            {/* Shop by Gender Section */}
+            <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 w-full flex flex-col gap-24">
+                {categories
+                    .filter(cat => !cat.parent_id) // Get only parents (Genders)
+                    .map((parentCategory, index) => {
+                        const childCategories = categories.filter(c => c.parent_id === parentCategory.category_id);
 
-            {/* Carousel Section */}
-            <section className="w-full py-16 bg-black/20 backdrop-blur-sm border-y border-white/5">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="flex items-center justify-between mb-8">
-                        <h3 className="text-2xl font-bold text-white">Trending in the Spectrum</h3>
-                        <div className="flex gap-2">
-                            <button className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center hover:bg-white/10 transition-colors">
-                                <span className="material-symbols-outlined text-white">arrow_back</span>
-                            </button>
-                            <button className="w-10 h-10 rounded-full border border-white/10 flex items-center justify-center hover:bg-white/10 transition-colors">
-                                <span className="material-symbols-outlined text-white">arrow_forward</span>
-                            </button>
-                        </div>
-                    </div>
-                    <div className="flex overflow-x-auto scrollbar-hide gap-6 pb-4 -mx-4 px-4 sm:mx-0 sm:px-0">
-                        {trendingProducts.map((item) => (
-                            <Link to={`/product/${item.product_id}`} key={item.product_id} className="flex-none w-64 group cursor-pointer">
-                                <div className="relative w-full aspect-[3/4] rounded-lg overflow-hidden mb-4">
-                                    <div className="absolute inset-0 bg-gray-800 animate-pulse"></div>
-                                    <div
-                                        className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110"
-                                        style={{ backgroundImage: `url('${item.thumbnail}')` }}
-                                    ></div>
-                                    {item.is_new && (
-                                        <div className="absolute top-3 right-3 bg-black/60 backdrop-blur-md text-white text-xs font-bold px-2 py-1 rounded">
-                                            NEW
+                        return (
+                            <div key={parentCategory.category_id} className="w-full">
+                                <div className={`flex flex-col md:flex-row gap-8 items-center mb-8 ${index % 2 === 1 ? 'md:flex-row-reverse' : ''}`}>
+                                    <div className="flex-1">
+                                        <h3 className="text-5xl md:text-7xl font-black text-white uppercase tracking-tighter mb-4">
+                                            {parentCategory.name}
+                                        </h3>
+                                        <p className="text-white/60 text-lg max-w-md">
+                                            {parentCategory.description || `Explore our latest collection for ${parentCategory.name}.`}
+                                        </p>
+                                    </div>
+                                    {parentCategory.image && (
+                                        <div className="w-full md:w-1/3 aspect-video rounded-2xl overflow-hidden relative">
+                                            <div
+                                                className="absolute inset-0 bg-cover bg-center"
+                                                style={{ backgroundImage: `url('${parentCategory.image}')` }}
+                                            />
+                                            <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
                                         </div>
                                     )}
                                 </div>
-                                <h4 className="text-white font-bold text-lg leading-tight group-hover:text-[#d411d4] transition-colors">
-                                    {item.name}
-                                </h4>
-                                <p className="text-gray-400 font-sans text-sm mt-1">{formatPriceVND(item.base_price)}</p>
+
+                                {/* Child Categories Grid */}
+                                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                                    {childCategories.map((child) => (
+                                        <Link
+                                            to={`/products?category_id=${child.category_id}`}
+                                            key={child.category_id}
+                                            className="group relative aspect-[3/4] overflow-hidden rounded-lg bg-white/5 border border-white/10 hover:border-[#d411d4]/50 transition-all"
+                                        >
+                                            {child.image ? (
+                                                <div
+                                                    className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-110"
+                                                    style={{ backgroundImage: `url('${child.image}')` }}
+                                                />
+                                            ) : (
+                                                <div className="absolute inset-0 flex items-center justify-center bg-white/5">
+                                                    <span className="material-symbols-outlined text-4xl text-white/20">checkroom</span>
+                                                </div>
+                                            )}
+
+                                            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent flex flex-col justify-end p-4">
+                                                <h5 className="text-white font-bold text-lg leading-tight group-hover:text-[#d411d4] transition-colors">
+                                                    {child.name}
+                                                </h5>
+                                                {child.description && (
+                                                    <p className="text-white/50 text-xs mt-1 line-clamp-2">
+                                                        {child.description}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </Link>
+                                    ))}
+                                </div>
+                            </div>
+                        );
+                    })}
+            </section>
+
+            {/* New Arrivals Section */}
+            {newProducts.length > 0 && (
+                <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 w-full">
+                    <div className="flex justify-between items-end mb-8">
+                        <div>
+                            <h2 className="text-3xl md:text-5xl font-black text-white uppercase tracking-tighter">
+                                Fresh Drops
+                            </h2>
+                            <p className="text-gray-400 mt-2">Just landed. Straight from the source.</p>
+                        </div>
+                        <Link to="/products?is_new=true" className="text-[#d411d4] font-bold hover:underline">
+                            View All
+                        </Link>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                        {newProducts.map((product) => (
+                            <Link
+                                key={product.product_id}
+                                to={`/product/${product.product_id}`}
+                                className="group flex flex-col gap-3"
+                            >
+                                <div className="relative w-full aspect-[3/4] bg-[#2A2422] rounded-2xl overflow-hidden border border-white/5 shadow-2xl transition-all duration-500 group-hover:shadow-[0_0_30px_rgba(212,17,212,0.15)] group-hover:-translate-y-1">
+                                    {product.thumbnail ? (
+                                        <img
+                                            src={product.thumbnail}
+                                            alt={product.name}
+                                            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                                        />
+                                    ) : (
+                                        <div className="w-full h-full flex flex-col items-center justify-center bg-white/5 text-white/20 gap-2">
+                                            <span className="material-symbols-outlined text-4xl">image</span>
+                                        </div>
+                                    )}
+                                    <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/80 to-transparent opacity-60 group-hover:opacity-80 transition-opacity"></div>
+                                    <div className="absolute top-3 right-3">
+                                        <span className="bg-[#d411d4] text-white text-[10px] font-black tracking-widest px-2 py-1 rounded-sm shadow-lg">
+                                            NEW
+                                        </span>
+                                    </div>
+                                </div>
+                                <div className="px-1">
+                                    <h3 className="text-lg font-bold text-white group-hover:text-[#d411d4] transition-colors leading-tight">
+                                        {product.name}
+                                    </h3>
+                                    <div className="flex items-center justify-between mt-1">
+                                        <span className="text-gray-400 font-sans text-sm">
+                                            {formatPriceVND(product.base_price)}
+                                        </span>
+                                    </div>
+                                </div>
                             </Link>
                         ))}
                     </div>
-                </div>
-            </section>
+                </section>
+            )}
+
+            {/* Best Sellers Section */}
+            {bestSellers.length > 0 && (
+                <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 w-full">
+                    <div className="flex justify-between items-end mb-8">
+                        <div>
+                            <h2 className="text-3xl md:text-5xl font-black text-white uppercase tracking-tighter">
+                                Best Sellers
+                            </h2>
+                            <p className="text-gray-400 mt-2">The crowd favorites. Don't miss out.</p>
+                        </div>
+                        <Link to="/products?sort_by=best_selling" className="text-[#d411d4] font-bold hover:underline">
+                            View All
+                        </Link>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                        {bestSellers.map((product) => (
+                            <Link
+                                key={product.product_id}
+                                to={`/product/${product.product_id}`}
+                                className="group flex flex-col gap-3"
+                            >
+                                <div className="relative w-full aspect-[3/4] bg-[#2A2422] rounded-2xl overflow-hidden border border-white/5 shadow-2xl transition-all duration-500 group-hover:shadow-[0_0_30px_rgba(212,17,212,0.15)] group-hover:-translate-y-1">
+                                    {product.thumbnail ? (
+                                        <img
+                                            src={product.thumbnail}
+                                            alt={product.name}
+                                            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                                        />
+                                    ) : (
+                                        <div className="w-full h-full flex flex-col items-center justify-center bg-white/5 text-white/20 gap-2">
+                                            <span className="material-symbols-outlined text-4xl">image</span>
+                                        </div>
+                                    )}
+                                    <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/80 to-transparent opacity-60 group-hover:opacity-80 transition-opacity"></div>
+                                    <div className="absolute top-3 right-3">
+                                        <span className="bg-orange-500 text-white text-[10px] font-black tracking-widest px-2 py-1 rounded-sm shadow-lg">
+                                            HOT
+                                        </span>
+                                    </div>
+                                </div>
+                                <div className="px-1">
+                                    <h3 className="text-lg font-bold text-white group-hover:text-[#d411d4] transition-colors leading-tight">
+                                        {product.name}
+                                    </h3>
+                                    <div className="flex items-center justify-between mt-1">
+                                        <span className="text-gray-400 font-sans text-sm">
+                                            {formatPriceVND(product.base_price)}
+                                        </span>
+                                    </div>
+                                </div>
+                            </Link>
+                        ))}
+                    </div>
+                </section>
+            )}
+
+
 
             {/* Newsletter / Footer Teaser */}
             <section className="max-w-4xl mx-auto px-4 py-24 text-center">
