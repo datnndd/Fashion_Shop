@@ -83,6 +83,17 @@ const UserOrdersTab = () => {
         }
     };
 
+    const getPaymentMethodMeta = (method) => {
+        switch (method) {
+            case 'cash':
+                return { label: 'Cash on Delivery', icon: 'payments' };
+            case 'card':
+                return { label: 'Credit / Debit Card', icon: 'credit_card' };
+            default:
+                return { label: method || 'Unknown', icon: 'account_balance_wallet' };
+        }
+    };
+
     const formatDate = (dateString) => {
         const date = new Date(dateString);
         return date.toLocaleDateString('vi-VN', {
@@ -179,6 +190,7 @@ const UserOrdersTab = () => {
                 const statusLabel = order.status ? order.status.charAt(0).toUpperCase() + order.status.slice(1) : 'Unknown';
                 const canCancel = order.status === 'pending';
                 const canReorder = ['delivered', 'completed', 'cancelled'].includes(order.status);
+                const paymentMeta = getPaymentMethodMeta(order.payment_method);
 
                 return (
                     <div key={order.order_id} className="bg-[#2d1b2d]/80 rounded-xl border border-[#4a2b4a] overflow-hidden">
@@ -223,6 +235,10 @@ const UserOrdersTab = () => {
                                             {actionOrderId === order.order_id ? 'Processing...' : 'Buy again'}
                                         </button>
                                     )}
+                                    <span className="flex items-center gap-2 px-3 py-1 rounded-full text-xs sm:text-sm border border-[#4a2b4a] text-gray-200 bg-[#3d2b3d]/40">
+                                        <span className="material-symbols-outlined text-base text-[#d411d4]">{paymentMeta.icon}</span>
+                                        <span>{paymentMeta.label}</span>
+                                    </span>
                                     <span className="font-bold text-[#d411d4]">{formatPriceVND(order.total_price)}</span>
                                     <span className={`material-symbols-outlined transition-transform duration-300 ${expandedOrder === order.order_id ? 'rotate-180' : ''}`}>
                                         expand_more
@@ -268,6 +284,13 @@ const UserOrdersTab = () => {
                                     <div className="flex justify-between text-gray-400">
                                         <span>Subtotal</span>
                                         <span>{formatPriceVND(subtotalValue)}</span>
+                                    </div>
+                                    <div className="flex justify-between text-gray-400 items-center">
+                                        <span>Payment Method</span>
+                                        <span className="flex items-center gap-2 text-white">
+                                            <span className="material-symbols-outlined text-base text-[#d411d4]">{paymentMeta.icon}</span>
+                                            <span>{paymentMeta.label}</span>
+                                        </span>
                                     </div>
                                     {discountValue > 0 && (
                                         <div className="flex justify-between text-green-400">
