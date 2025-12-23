@@ -238,6 +238,9 @@ async def create_product(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Category not found")
 
     # Insert product
+    # Serialize images to JSON for asyncpg
+    images_json = json.dumps(payload.images) if payload.images else json.dumps([])
+    
     product_result = await session.execute(
         text("""
             INSERT INTO products (category_id, name, slug, description, base_price, thumbnail, 
@@ -256,7 +259,7 @@ async def create_product(
             "is_new": payload.is_new,
             "discount_percent": payload.discount_percent,
             "badge": payload.badge,
-            "images": payload.images,
+            "images": images_json,
             "is_published": payload.is_published,
         }
     )
@@ -270,6 +273,10 @@ async def create_product(
     # Insert variants
     variants = []
     for variant_data in payload.variants:
+        # Serialize JSON fields for asyncpg
+        var_attributes = json.dumps(variant_data.attributes) if variant_data.attributes else json.dumps({})
+        var_images = json.dumps(variant_data.images) if variant_data.images else json.dumps([])
+        
         var_result = await session.execute(
             text("""
                 INSERT INTO product_variants (product_id, sku, attributes, price, stock, images, is_active)
@@ -279,10 +286,10 @@ async def create_product(
             {
                 "product_id": product["product_id"],
                 "sku": variant_data.sku,
-                "attributes": variant_data.attributes,
+                "attributes": var_attributes,
                 "price": variant_data.price,
                 "stock": variant_data.stock,
-                "images": variant_data.images,
+                "images": var_images,
                 "is_active": variant_data.is_active,
             }
         )
@@ -731,6 +738,10 @@ async def create_variant(
     if not result.mappings().one_or_none():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
 
+    # Serialize JSON fields for asyncpg
+    var_attributes = json.dumps(payload.attributes) if payload.attributes else json.dumps({})
+    var_images = json.dumps(payload.images) if payload.images else json.dumps([])
+
     var_result = await session.execute(
         text("""
             INSERT INTO product_variants (product_id, sku, attributes, price, stock, images, is_active)
@@ -740,10 +751,10 @@ async def create_variant(
         {
             "product_id": product_id,
             "sku": payload.sku,
-            "attributes": payload.attributes,
+            "attributes": var_attributes,
             "price": payload.price,
             "stock": payload.stock,
-            "images": payload.images,
+            "images": var_images,
             "is_active": payload.is_active,
         }
     )
