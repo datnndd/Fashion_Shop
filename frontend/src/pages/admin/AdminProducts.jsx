@@ -14,12 +14,16 @@ const AdminProducts = () => {
     const [saving, setSaving] = useState(false);
     const [uploading, setUploading] = useState({});
     const [error, setError] = useState('');
+    const [categorySearch, setCategorySearch] = useState('');
+    const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
+    const categoryDropdownRef = useRef(null);
 
     // Form state
     const [formData, setFormData] = useState({
         name: '',
         slug: '',
         category_id: '',
+        categories: [],
         base_price: '',
         description: '',
         thumbnail: '',
@@ -69,6 +73,14 @@ const AdminProducts = () => {
         return category?.name || 'Unknown';
     };
 
+    const getCategoryNames = (categoryIds = []) => {
+        if (!Array.isArray(categoryIds)) return getCategoryName(categoryIds);
+        const names = categoryIds
+            .map(id => getCategoryName(id))
+            .filter(Boolean);
+        return names.length ? names.join(', ') : 'Unknown';
+    };
+
     // Get product status based on stock (simplified for now)
     const getProductStatus = (product) => {
         return product.is_published ? 'Active' : 'Draft';
@@ -92,6 +104,7 @@ const AdminProducts = () => {
             name: product.name || '',
             slug: product.slug || '',
             category_id: product.category_id || '',
+            categories: product.categories || (product.category_id ? [product.category_id] : []),
             base_price: product.base_price || '',
             description: product.description || '',
             thumbnail: product.thumbnail || '',
@@ -112,6 +125,7 @@ const AdminProducts = () => {
             name: '',
             slug: '',
             category_id: categories[0]?.category_id || '',
+            categories: categories[0]?.category_id ? [categories[0].category_id] : [],
             base_price: '',
             description: '',
             thumbnail: '',
@@ -256,6 +270,31 @@ const AdminProducts = () => {
         }));
     };
 
+    const toggleCategorySelection = (categoryId) => {
+        setFormData(prev => {
+            const exists = prev.categories.includes(categoryId);
+            const nextCategories = exists
+                ? prev.categories.filter(id => id !== categoryId)
+                : [...prev.categories, categoryId];
+            return { ...prev, categories: nextCategories };
+        });
+    };
+
+    const filteredCategories = categories.filter(cat =>
+        cat.name.toLowerCase().includes(categorySearch.toLowerCase())
+    );
+
+    // Close dropdown on outside click
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (categoryDropdownRef.current && !categoryDropdownRef.current.contains(e.target)) {
+                setShowCategoryDropdown(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
     const generateSku = (index) => {
         const variant = formData.variants[index];
         const productSlug = formData.slug || generateSlug(formData.name);
@@ -292,10 +331,14 @@ const AdminProducts = () => {
                     is_active: true
                 }));
 
+            const combinedCategories = new Set(formData.categories || []);
+            if (formData.category_id) combinedCategories.add(parseInt(formData.category_id));
+
             const productData = {
                 name: formData.name,
                 slug: formData.slug || generateSlug(formData.name),
                 category_id: parseInt(formData.category_id),
+                categories: Array.from(combinedCategories),
                 base_price: parseFloat(formData.base_price),
                 description: formData.description || null,
                 thumbnail: formData.thumbnail || null,
@@ -408,7 +451,7 @@ const AdminProducts = () => {
                         <thead>
                             <tr className="text-left text-sm text-gray-400 border-b border-white/5">
                                 <th className="px-6 py-4 font-medium">Product</th>
-                                <th className="px-6 py-4 font-medium">Category</th>
+                                <th className="px-6 py-4 font-medium">Categories</th>
                                 <th className="px-6 py-4 font-medium">Price</th>
                                 <th className="px-6 py-4 font-medium">Variants</th>
                                 <th className="px-6 py-4 font-medium">Status</th>
@@ -431,7 +474,9 @@ const AdminProducts = () => {
                                                 <span className="font-medium">{product.name}</span>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4 text-gray-400">{getCategoryName(product.category_id)}</td>
+                                        <td className="px-6 py-4 text-gray-400">
+                                            {getCategoryNames(product.categories?.length ? product.categories : [product.category_id])}
+                                        </td>
                                         <td className="px-6 py-4 font-medium">{formatPriceVND(product.base_price)}</td>
                                         <td className="px-6 py-4 text-gray-400">{variantCount} variants</td>
                                         <td className="px-6 py-4">
@@ -527,19 +572,99 @@ const AdminProducts = () => {
                                     </div>
                                 </div>
 
-                                <div>
-                                    <label className="block text-sm font-medium mb-2">Category *</label>
-                                    <select
-                                        name="category_id"
-                                        value={formData.category_id}
-                                        onChange={handleInputChange}
-                                        className="w-full bg-white/5 rounded-lg px-4 py-3 text-sm border border-white/10 focus:border-[#d411d4] outline-none"
-                                    >
-                                        <option value="" className="bg-[#1a1a2e]">Select category</option>
-                                        {categories.map(cat => (
-                                            <option key={cat.category_id} value={cat.category_id} className="bg-[#1a1a2e]">{cat.name}</option>
-                                        ))}
-                                    </select>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium mb-2">Primary Category *</label>
+                                        <select
+                                            name="category_id"
+                                            value={formData.category_id}
+                                            onChange={handleInputChange}
+                                            className="w-full bg-white/5 rounded-lg px-4 py-3 text-sm border border-white/10 focus:border-[#d411d4] outline-none"
+                                        >
+                                            <option value="" className="bg-[#1a1a2e]">Select category</option>
+                                            {categories.map(cat => (
+                                                <option key={cat.category_id} value={cat.category_id} className="bg-[#1a1a2e]">{cat.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium mb-2">Additional Categories</label>
+                                        <div className="relative" ref={categoryDropdownRef}>
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowCategoryDropdown(prev => !prev)}
+                                                className="w-full bg-white/5 rounded-lg px-3 py-2 text-sm border border-white/10 focus:border-[#d411d4] outline-none flex items-center justify-between"
+                                            >
+                                                <span className="text-left truncate">
+                                                    {formData.categories.length > 0
+                                                        ? `${formData.categories.length} selected`
+                                                        : 'Select categories'}
+                                                </span>
+                                                <span className="material-symbols-outlined text-[18px] text-gray-400">
+                                                    {showCategoryDropdown ? 'expand_less' : 'expand_more'}
+                                                </span>
+                                            </button>
+
+                                            {showCategoryDropdown && (
+                                                <div className="absolute z-20 mt-2 w-full bg-[#0f0f1a] border border-white/10 rounded-lg shadow-xl p-3 space-y-2">
+                                                    <input
+                                                        type="text"
+                                                        value={categorySearch}
+                                                        onChange={(e) => setCategorySearch(e.target.value)}
+                                                        placeholder="Search categories..."
+                                                        className="w-full bg-white/5 rounded-md px-3 py-2 text-sm border border-white/10 focus:border-[#d411d4] outline-none"
+                                                    />
+                                                    <div className="max-h-52 overflow-y-auto space-y-1 pr-1">
+                                                        {filteredCategories.map(cat => (
+                                                            <label key={cat.category_id} className="flex items-center gap-2 text-sm text-gray-300 px-2 py-1 rounded hover:bg-white/5">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={formData.categories.includes(cat.category_id)}
+                                                                    onChange={() => toggleCategorySelection(cat.category_id)}
+                                                                    className="w-4 h-4 accent-[#d411d4]"
+                                                                />
+                                                                <span className="truncate">{cat.name}</span>
+                                                            </label>
+                                                        ))}
+                                                        {filteredCategories.length === 0 && (
+                                                            <span className="text-xs text-gray-500 px-2 py-1 block">No categories match your search.</span>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex items-center justify-between text-[11px] text-gray-400">
+                                                        <span>{formData.categories.length} selected</span>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setFormData(prev => ({ ...prev, categories: [] }))}
+                                                            className="hover:text-white underline"
+                                                        >
+                                                            Clear all
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {formData.categories.length > 0 && (
+                                                <div className="flex flex-wrap gap-2 mt-2">
+                                                    {formData.categories.map((cid) => {
+                                                        const name = getCategoryName(cid);
+                                                        return (
+                                                            <span key={cid} className="flex items-center gap-1 px-2 py-1 rounded-full bg-[#d411d4]/15 text-[#d411d4] text-xs">
+                                                                {name}
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => toggleCategorySelection(cid)}
+                                                                    className="hover:text-white"
+                                                                >
+                                                                    ×
+                                                                </button>
+                                                            </span>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <p className="text-[11px] text-gray-500 mt-1">Primary category is set on the left; choose extra categories here.</p>
+                                    </div>
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-4">

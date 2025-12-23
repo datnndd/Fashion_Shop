@@ -1,106 +1,112 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import text
+from sqlalchemy import select, func
+from sqlalchemy.orm import joinedload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_session
 from app.deps import get_current_user
+from app.models.orders import Cart, CartItem
+from app.models.catalog import ProductVariant, Product
 from app.schemas.cart import CartRead, CartItemCreate, CartItemUpdate
 
 router = APIRouter(prefix="/cart", tags=["cart"])
 
 
-async def _get_or_create_cart(session: AsyncSession, user_id: int) -> dict:
+async def _get_or_create_cart(session: AsyncSession, user_id: int) -> Cart:
     """Fetch cart for user or create a new one."""
-    result = await session.execute(
-        text("SELECT * FROM carts WHERE user_id = :user_id"),
-        {"user_id": user_id},
-    )
-    cart = result.mappings().one_or_none()
-    if cart:
-        return dict(cart)
+    stmt = select(Cart).where(Cart.user_id == user_id)
+    result = await session.execute(stmt)
+    cart = result.scalar_one_or_none()
 
-    insert_result = await session.execute(
-        text("INSERT INTO carts (user_id, updated_at) VALUES (:user_id, NOW()) RETURNING *"),
-        {"user_id": user_id},
-    )
-    cart = insert_result.mappings().one()
-    await session.commit()
-    return dict(cart)
+    if not cart:
+        cart = Cart(user_id=user_id, updated_at=func.now())
+        session.add(cart)
+        await session.commit()
+        await session.refresh(cart)
+    
+    return cart
 
 
-async def _build_cart_response(session: AsyncSession, cart: dict) -> CartRead:
+async def _build_cart_response(session: AsyncSession, cart: Cart) -> CartRead:
     """Load cart items with product info and compute totals."""
-    items_result = await session.execute(
-        text(
-            """
-            SELECT 
-                ci.cart_item_id,
-                ci.quantity,
-                ci.product_variant_id,
-                pv.attributes AS variant_attributes,
-                pv.price AS variant_price,
-                p.product_id,
-                p.name AS product_name,
-                p.thumbnail,
-                p.discount_percent,
-                p.base_price
-            FROM cart_items ci
-            JOIN product_variants pv ON ci.product_variant_id = pv.variant_id
-            JOIN products p ON pv.product_id = p.product_id
-            WHERE ci.cart_id = :cart_id
-            ORDER BY ci.created_at DESC
-            """
-        ),
-        {"cart_id": cart["cart_id"]},
+    # Eager load items with their product variants and products
+    stmt = (
+        select(CartItem)
+        .options(
+            joinedload(CartItem.product_variant).joinedload(ProductVariant.product)
+        )
+        .where(CartItem.cart_id == cart.cart_id)
+        .order_by(CartItem.created_at.desc())
     )
+    result = await session.execute(stmt)
+    items = result.scalars().all()
 
-    items = []
+    cart_items_data = []
     subtotal = 0.0
 
-    for row in items_result.mappings().all():
-        discount_percent = row["discount_percent"] or 0
-        base_price = float(row["base_price"] or 0)
-        extra_price = float(row["variant_price"] or 0)
+    for item in items:
+        # Safeguard if product variant was deleted but cart item remains
+        if not item.product_variant or not item.product_variant.product:
+            continue
+
+        variant = item.product_variant
+        product = variant.product
+
+        # Verify pricing logic: base_price + variant_price
+        base_price = float(product.base_price or 0)
+        extra_price = float(variant.price or 0)
         total_price = base_price + extra_price
-        
-        sale_price = total_price * (1 - discount_percent / 100) if discount_percent else None
+
+        discount_percent = product.discount_percent or 0
+        sale_price = None
+        if discount_percent > 0:
+            sale_price = total_price * (1 - discount_percent / 100)
+
         unit_price = sale_price if sale_price is not None else total_price
-        line_total = unit_price * row["quantity"]
+
+        # Stock logic
+        available_stock = variant.stock
+        # available_stock = 777 # DEBUG: Force value to check if server updates
+
+        
+        # Logic to determine purchasable quantity and availability
+        purchasable_qty = item.quantity
+        if available_stock is not None:
+            safe_stock = max(available_stock, 0)
+            purchasable_qty = min(item.quantity, safe_stock)
+        
+        # Calculate line total based on purchasable quantity
+        line_total = unit_price * purchasable_qty
         subtotal += line_total
 
-        items.append(
-            {
-                "cart_item_id": row["cart_item_id"],
-                "product_variant_id": row["product_variant_id"],
-                "quantity": row["quantity"],
-                "variant_attributes": row["variant_attributes"],
-                "unit_price": unit_price,
-                "line_total": line_total,
-                "product": {
-                    "product_id": row["product_id"],
-                    "name": row["product_name"],
-                    "thumbnail": row["thumbnail"],
-                    "price": total_price,
-                    "discount_percent": discount_percent,
-                    "sale_price": sale_price,
-                },
+        cart_items_data.append({
+            "cart_item_id": item.cart_item_id,
+            "product_variant_id": item.product_variant_id,
+            "quantity": item.quantity,
+            "variant_attributes": variant.attributes,
+            "available_stock": available_stock,
+            "purchasable_quantity": purchasable_qty,
+            "is_available": available_stock is None or available_stock > 0,
+            "unit_price": unit_price,
+            "line_total": line_total,
+            "product": {
+                "product_id": product.product_id,
+                "name": product.name,
+                "thumbnail": product.thumbnail,
+                "price": total_price,
+                "discount_percent": discount_percent,
+                "sale_price": sale_price,
             }
-        )
+        })
 
-    # Refresh updated_at in case caller didn't supply it
-    updated_at = cart.get("updated_at")
-    if updated_at is None:
-        updated_result = await session.execute(
-            text("SELECT updated_at FROM carts WHERE cart_id = :cart_id"),
-            {"cart_id": cart["cart_id"]},
-        )
-        updated_row = updated_result.mappings().one_or_none()
-        updated_at = updated_row["updated_at"] if updated_row else None
-
+    # Update or fetch updated_at if needed (optional since we have cart obj)
+    # The Cart object might be detached or specific field needed? 
+    # CartRead expects updated_at.
+    
     return CartRead(
-        cart_id=cart["cart_id"],
-        updated_at=updated_at,
-        items=items,
+        cart_id=cart.cart_id,
+        updated_at=cart.updated_at,
+        items=cart_items_data,
         subtotal=round(subtotal, 2),
     )
 
@@ -128,63 +134,52 @@ async def add_to_cart(
     """
     cart = await _get_or_create_cart(session, current_user["user_id"])
 
-    # Validate variant exists and is active
-    variant_result = await session.execute(
-        text(
-            """
-            SELECT pv.variant_id, pv.price, pv.is_active, p.is_published
-            FROM product_variants pv
-            JOIN products p ON pv.product_id = p.product_id
-            WHERE pv.variant_id = :variant_id
-            """
-        ),
-        {"variant_id": payload.product_variant_id},
+    # Validate variant exists and is active using ORM
+    stmt = (
+        select(ProductVariant)
+        .options(joinedload(ProductVariant.product))
+        .where(ProductVariant.variant_id == payload.product_variant_id)
     )
-    variant = variant_result.mappings().one_or_none()
+    result = await session.execute(stmt)
+    variant = result.scalar_one_or_none()
+
     if not variant:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product variant not found")
-    if not variant["is_active"] or not variant["is_published"]:
+    
+    if not variant.is_active or not variant.product.is_published:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Product variant is not available")
+    
+    if variant.stock is not None and payload.quantity > variant.stock:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Not enough stock for this product")
 
     # Check if item already in cart
-    existing_result = await session.execute(
-        text(
-            """
-            SELECT cart_item_id, quantity FROM cart_items
-            WHERE cart_id = :cart_id AND product_variant_id = :variant_id
-            """
-        ),
-        {"cart_id": cart["cart_id"], "variant_id": payload.product_variant_id},
+    stmt_item = select(CartItem).where(
+        CartItem.cart_id == cart.cart_id,
+        CartItem.product_variant_id == payload.product_variant_id
     )
-    existing = existing_result.mappings().one_or_none()
+    existing_item = (await session.execute(stmt_item)).scalar_one_or_none()
 
-    if existing:
-        new_qty = existing["quantity"] + payload.quantity
-        await session.execute(
-            text("UPDATE cart_items SET quantity = :quantity WHERE cart_item_id = :cart_item_id"),
-            {"quantity": new_qty, "cart_item_id": existing["cart_item_id"]},
-        )
+    if existing_item:
+        new_qty = existing_item.quantity + payload.quantity
+        if variant.stock is not None and new_qty > variant.stock:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Not enough stock for this product")
+        
+        existing_item.quantity = new_qty
+        # session.add(existing_item) # Not strictly needed if attached, but good for clarity
     else:
-        await session.execute(
-            text(
-                """
-                INSERT INTO cart_items (cart_id, product_variant_id, quantity, created_at)
-                VALUES (:cart_id, :variant_id, :quantity, NOW())
-                """
-            ),
-            {
-                "cart_id": cart["cart_id"],
-                "variant_id": payload.product_variant_id,
-                "quantity": payload.quantity,
-            },
+        new_item = CartItem(
+            cart_id=cart.cart_id,
+            product_variant_id=payload.product_variant_id,
+            quantity=payload.quantity,
+            created_at=func.now()
         )
+        session.add(new_item)
 
-    await session.execute(
-        text("UPDATE carts SET updated_at = NOW() WHERE cart_id = :cart_id"),
-        {"cart_id": cart["cart_id"]},
-    )
+    # Update cart timestamp
+    cart.updated_at = func.now()
+    session.add(cart)
+    
     await session.commit()
-
     return await _build_cart_response(session, cart)
 
 
@@ -198,33 +193,34 @@ async def update_cart_item(
     """
     Update quantity for a cart item belonging to the current user.
     """
-    item_result = await session.execute(
-        text(
-            """
-            SELECT ci.cart_id
-            FROM cart_items ci
-            JOIN carts c ON ci.cart_id = c.cart_id
-            WHERE ci.cart_item_id = :cart_item_id AND c.user_id = :user_id
-            """
-        ),
-        {"cart_item_id": cart_item_id, "user_id": current_user["user_id"]},
+    # Fetch Item and ensure it belongs to user's cart
+    stmt = (
+        select(CartItem)
+        .join(Cart)
+        .where(
+            CartItem.cart_item_id == cart_item_id,
+            Cart.user_id == current_user["user_id"]
+        )
+        .options(joinedload(CartItem.product_variant), joinedload(CartItem.cart))
     )
-    item = item_result.mappings().one_or_none()
-    if not item:
+    result = await session.execute(stmt)
+    cart_item = result.scalar_one_or_none()
+
+    if not cart_item:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cart item not found")
 
-    await session.execute(
-        text("UPDATE cart_items SET quantity = :quantity WHERE cart_item_id = :cart_item_id"),
-        {"quantity": payload.quantity, "cart_item_id": cart_item_id},
-    )
-    await session.execute(
-        text("UPDATE carts SET updated_at = NOW() WHERE cart_id = :cart_id"),
-        {"cart_id": item["cart_id"]},
-    )
-    await session.commit()
+    variant = cart_item.product_variant
+    
+    if variant and variant.stock is not None:
+        if variant.stock <= 0 or payload.quantity > variant.stock:
+             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Not enough stock for this product")
 
-    cart = {"cart_id": item["cart_id"], "updated_at": None}
-    return await _build_cart_response(session, cart)
+    cart_item.quantity = payload.quantity
+    cart_item.cart.updated_at = func.now()
+    
+    await session.commit()
+    
+    return await _build_cart_response(session, cart_item.cart)
 
 
 @router.delete("/items/{cart_item_id}", response_model=CartRead)
@@ -236,30 +232,27 @@ async def remove_cart_item(
     """
     Remove a cart item belonging to the current user.
     """
-    item_result = await session.execute(
-        text(
-            """
-            SELECT ci.cart_id
-            FROM cart_items ci
-            JOIN carts c ON ci.cart_id = c.cart_id
-            WHERE ci.cart_item_id = :cart_item_id AND c.user_id = :user_id
-            """
-        ),
-        {"cart_item_id": cart_item_id, "user_id": current_user["user_id"]},
+    stmt = (
+        select(CartItem)
+        .join(Cart)
+        .where(
+            CartItem.cart_item_id == cart_item_id,
+            Cart.user_id == current_user["user_id"]
+        )
+        .options(joinedload(CartItem.cart))
     )
-    item = item_result.mappings().one_or_none()
-    if not item:
+    result = await session.execute(stmt)
+    cart_item = result.scalar_one_or_none()
+
+    if not cart_item:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Cart item not found")
 
-    await session.execute(
-        text("DELETE FROM cart_items WHERE cart_item_id = :cart_item_id"),
-        {"cart_item_id": cart_item_id},
-    )
-    await session.execute(
-        text("UPDATE carts SET updated_at = NOW() WHERE cart_id = :cart_id"),
-        {"cart_id": item["cart_id"]},
-    )
+    cart = cart_item.cart
+    await session.delete(cart_item)
+    
+    cart.updated_at = func.now()
+    session.add(cart)
+    
     await session.commit()
 
-    cart = {"cart_id": item["cart_id"], "updated_at": None}
     return await _build_cart_response(session, cart)

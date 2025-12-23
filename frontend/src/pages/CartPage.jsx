@@ -1,48 +1,59 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { formatPriceVND } from '../utils/currency';
 
-const recommendations = [
-    {
-        id: 4,
-        name: 'Ribbed Long Sleeve',
-        price: 1375000,
-        image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDcrakDjwySS2NcyUEZGEn_qay61wwEJsUs8RSMa5wI94pGdYYqaIuxSwJSU-SLo-vu07Yli6dNfWBktTffW9gmlzUi4TMDqxrfyo3YxwLwkMScJSBylO9YSAsuZyqUYUdGN5K3MoH3qFYlHQ77T2250DyQyvgAW5fMIowfcTwQcpdyNAQR7HCjRkBusbfNM8O4hY94Cj89yJdzMXsjY5z3yZbxs4AHeblThhw0wKuxbqP9LuWOab_lWX2eDIhDZAYVxKglhhtgmMA',
-    },
-    {
-        id: 5,
-        name: 'Basic Cap',
-        price: 625000,
-        image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAq5Zy9tSAPgAt-jhA9xiZPz_BNBcdTHFvP_PQUPmMd4sLdwHqD98IryyuAnNvJ33hTSHa90PU-rLKMfELfJ5LpaVCXCZwaW36lUCNoIAPMXy244vKs9r569TsJxjQrNyXdqXzIJSbJCtIf0Fdjx4X24cxYh8-Z9VDP_013VC6e5-lXSb515mDSh_4vjpCayj8wX2Fw165Imcho9Q9zU2FI1b-Hz8wgXcxDVy_mSNwBXc84aZbrpynKBrBc86tmgjW6w6S3pihwMfw',
-    },
-    {
-        id: 6,
-        name: 'Heavy Cotton Tee',
-        price: 875000,
-        image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuABUP7no3eTgrJ3Q2UvgM-wdg-eSFIprnEb_xtnQGFO7Lr18sy_hlRROWYVqr_p6Qr1YPUsBJWIR9lyB1gbdKoqBLB7W0OD5AHms7GSISgs2cLTvLMutTPNeA3g4JkbqF2fgfObXw7X_4-N6tmIo8mSRk45gaJbdRPLKjqWmr6AsEqbF6G_i8lIuoCvLSok2OmbL6bDKX7POKrHxRgpYfc33QgRN99yt1pCtjwNln1TQ9hZazs5Q-TqSwux0Dk6spDMH6MKNviJhWc',
-    },
-    {
-        id: 7,
-        name: 'Oversized Hoodie',
-        price: 2375000,
-        image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCUkyJPJGa1A3TxxNJZCbAtQ1jgRhx7Pgm7Wer3bVQkrwVvLpsl21nHLKZqhTwdTNfSvlaFMvP6Q-gPAFdSJgaFubuK_Qr8vJ6liY-T991fGmRcublvIIOTh1vYyNMsyOt4xw_x9Rjf80us2KB9OfZcfhCQaIqq4qV3MQJ4z0jv64zVZSQyRwpqSCXA5oS1hQTs3BoMIngpFavbX_btJWfBKEuN6Vn1img7IdZQ_7fpYOEpHLB7O2rSzkV8RGqnpuFaEN6H3v47R2E',
-    },
-];
+
+
+const parseStockNumber = (value) => {
+    if (value === null || value === undefined) return null;
+    const n = Number(value);
+    return Number.isFinite(n) ? n : null;
+};
+
+const getAvailability = (item) => {
+    if (!item) {
+        return { availableStock: null, isAvailable: false, maxSelectable: 1 };
+    }
+
+    const availableStock = parseStockNumber(item.available_stock);
+    const purchasableQty = parseStockNumber(item.purchasable_quantity);
+    const effectiveStock = availableStock ?? purchasableQty;
+    const normalizedStock = typeof effectiveStock === 'number' ? Math.max(effectiveStock, 0) : null;
+
+    const hasAvailabilityFlag = typeof item.is_available === 'boolean';
+    const isAvailable = hasAvailabilityFlag ? item.is_available : (normalizedStock === null || normalizedStock > 0);
+    const maxSelectable = normalizedStock === null ? Number.MAX_SAFE_INTEGER : Math.max(normalizedStock, 1);
+
+    return { availableStock: normalizedStock, isAvailable, maxSelectable };
+};
 
 const CartPage = () => {
     const { isAuthenticated } = useAuth();
     const { cart, cartCount, loading, updateItem, removeItem, refreshCart } = useCart();
+    const navigate = useNavigate();
 
     const [actionError, setActionError] = useState('');
     const [updatingId, setUpdatingId] = useState(null);
+    const [selectedItems, setSelectedItems] = useState(new Set());
 
     useEffect(() => {
         if (isAuthenticated) {
             refreshCart();
         }
     }, [isAuthenticated, refreshCart]);
+
+    useEffect(() => {
+        const next = new Set();
+        (cart?.items || []).forEach((item) => {
+            const { isAvailable } = getAvailability(item);
+            if (isAvailable) {
+                next.add(item.cart_item_id);
+            }
+        });
+        setSelectedItems(next);
+    }, [cart]);
 
     if (!isAuthenticated) {
         return (
@@ -64,11 +75,22 @@ const CartPage = () => {
     const items = cart?.items || [];
     const subtotal = cart?.subtotal || 0;
 
+    const selectedTotal = items.reduce((sum, item) => {
+        const { isAvailable } = getAvailability(item);
+        if (!selectedItems.has(item.cart_item_id) || !isAvailable) return sum;
+        return sum + (item.line_total || 0);
+    }, 0);
+
     const handleQuantityChange = async (itemId, delta) => {
         const item = items.find((i) => i.cart_item_id === itemId);
         if (!item) return;
+        const { isAvailable, maxSelectable } = getAvailability(item);
+        if (!isAvailable) {
+            setActionError('Item is out of stock. Please remove it.');
+            return;
+        }
 
-        const newQuantity = Math.max(1, item.quantity + delta);
+        const newQuantity = Math.max(1, Math.min(item.quantity + delta, maxSelectable));
         setUpdatingId(itemId);
         setActionError('');
         try {
@@ -92,6 +114,42 @@ const CartPage = () => {
         }
     };
 
+    const toggleSelect = (itemId, isAvailable) => {
+        setSelectedItems((prev) => {
+            const next = new Set(prev);
+            if (!isAvailable) {
+                next.delete(itemId);
+                return next;
+            }
+            if (next.has(itemId)) {
+                next.delete(itemId);
+            } else {
+                next.add(itemId);
+            }
+            return next;
+        });
+    };
+
+    const handleCheckout = () => {
+        if (selectedTotal <= 0) {
+            setActionError('Select at least one available item to checkout.');
+            return;
+        }
+
+        for (const itemId of selectedItems) {
+            const item = items.find((i) => i.cart_item_id === itemId);
+            if (!item) continue;
+
+            const { availableStock } = getAvailability(item);
+            if (availableStock !== null && item.quantity > availableStock) {
+                setActionError(`Not enough stock for ${item.product.name}. Available: ${availableStock}`);
+                return;
+            }
+        }
+
+        navigate('/checkout', { state: { selectedIds: Array.from(selectedItems) } });
+    };
+
     return (
         <div className="bg-[#221022] text-white font-[Space_Grotesk] min-h-screen flex flex-col">
             {/* Main Content */}
@@ -101,7 +159,7 @@ const CartPage = () => {
                     <h1 className="text-5xl md:text-6xl font-black leading-tight tracking-[-0.033em] mb-2 uppercase">Your Cart</h1>
                     <div className="flex items-center gap-2">
                         <span className="h-px w-12 bg-[#d411d4] inline-block"></span>
-                        <p className="text-[#c992c9] text-lg font-normal">{cartCount} items in your bag</p>
+                        <p className="text-[#c992c9] text-lg font-normal">{items.length} items in your bag</p>
                     </div>
                     {actionError && <p className="text-sm text-red-400 mt-3">{actionError}</p>}
                 </div>
@@ -128,6 +186,7 @@ const CartPage = () => {
                                 <table className="w-full text-left border-collapse">
                                     <thead>
                                         <tr className="bg-[#482348]/20 border-b border-[#482348]">
+                                            <th className="px-4 py-4 text-[#c992c9] text-xs uppercase tracking-wider font-bold w-10 text-center">Buy</th>
                                             <th className="px-6 py-4 text-[#c992c9] text-xs uppercase tracking-wider font-bold">Product</th>
                                             <th className="px-6 py-4 text-[#c992c9] text-xs uppercase tracking-wider font-bold w-32 md:w-48 text-center">Quantity</th>
                                             <th className="px-6 py-4 text-[#c992c9] text-xs uppercase tracking-wider font-bold w-32 text-right">Total</th>
@@ -140,9 +199,19 @@ const CartPage = () => {
                                             const colorName = attrs.color_name || attrs.color || 'Color';
                                             const colorValue = attrs.color || '#482348';
                                             const sizeLabel = attrs.size || attrs.size_name || 'Free size';
+                                            const { availableStock, isAvailable, maxSelectable } = getAvailability(item);
 
                                             return (
                                                 <tr key={item.cart_item_id} className="group hover:bg-[#482348]/10 transition-colors">
+                                                    <td className="px-4 py-6 text-center align-top">
+                                                        <input
+                                                            type="checkbox"
+                                                            disabled={!isAvailable}
+                                                            checked={selectedItems.has(item.cart_item_id)}
+                                                            onChange={() => toggleSelect(item.cart_item_id, isAvailable)}
+                                                            className="w-4 h-4 accent-[#d411d4]"
+                                                        />
+                                                    </td>
                                                     <td className="px-6 py-6">
                                                         <div className="flex gap-4 md:gap-6 items-center">
                                                             <div className="relative w-20 h-20 md:w-24 md:h-24 rounded-lg overflow-hidden flex-shrink-0 bg-gray-800 border border-[#482348] group-hover:border-[#d411d4] transition-colors">
@@ -155,29 +224,87 @@ const CartPage = () => {
                                                                     <span>{colorName}</span>
                                                                 </div>
                                                                 <span className="text-sm text-[#c992c9] mt-1">Size: {sizeLabel}</span>
+                                                                {!isAvailable && (
+                                                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 text-xs font-semibold">
+                                                                        <span className="material-symbols-outlined text-[12px]">error</span>
+                                                                        Hết hàng
+                                                                    </span>
+                                                                )}
+                                                                {isAvailable && availableStock !== null && (
+                                                                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${item.quantity > availableStock
+                                                                        ? 'bg-red-500/20 text-red-400'
+                                                                        : availableStock <= 5
+                                                                            ? 'bg-yellow-500/20 text-yellow-400'
+                                                                            : 'bg-green-500/20 text-green-400'
+                                                                        }`}>
+                                                                        <span className="material-symbols-outlined text-[12px]">inventory_2</span>
+                                                                        Còn {availableStock} sản phẩm
+                                                                    </span>
+                                                                )}
+                                                                {isAvailable && availableStock === null && (
+                                                                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 text-xs font-semibold">
+                                                                        <span className="material-symbols-outlined text-[12px]">all_inclusive</span>
+                                                                        Không giới hạn
+                                                                    </span>
+                                                                )}
+                                                                {isAvailable && availableStock !== null && item.quantity > availableStock && (
+                                                                    <span className="inline-flex items-center gap-1 text-xs text-red-400 mt-1">
+                                                                        <span className="material-symbols-outlined text-[12px]">warning</span>
+                                                                        Số lượng vượt quá tồn kho!
+                                                                    </span>
+                                                                )}
                                                                 <span className="md:hidden font-bold mt-2">{formatPriceVND(item.unit_price)}</span>
                                                             </div>
                                                         </div>
                                                     </td>
                                                     <td className="px-6 py-6">
-                                                        <div className="flex items-center justify-center">
+                                                        <div className="flex flex-col items-center gap-1">
                                                             <div className="flex items-center border border-[#482348] rounded-lg bg-[#221022]/50">
                                                                 <button
                                                                     onClick={() => handleQuantityChange(item.cart_item_id, -1)}
-                                                                    disabled={updatingId === item.cart_item_id}
+                                                                    disabled={updatingId === item.cart_item_id || !isAvailable || item.quantity <= 1}
                                                                     className="w-8 h-8 flex items-center justify-center text-[#c992c9] hover:text-white hover:bg-[#482348]/50 rounded-l-lg transition-colors disabled:opacity-50"
                                                                 >
                                                                     <span className="material-symbols-outlined text-[16px]">remove</span>
                                                                 </button>
-                                                                <span className="w-8 text-center font-medium text-sm">{item.quantity}</span>
+                                                                <input
+                                                                    type="number"
+                                                                    min="1"
+                                                                    max={maxSelectable}
+                                                                    value={item.quantity}
+                                                                    onChange={(e) => {
+                                                                        const val = parseInt(e.target.value);
+                                                                        if (!isNaN(val)) {
+                                                                            handleQuantityChange(item.cart_item_id, val - item.quantity);
+                                                                        }
+                                                                    }}
+                                                                    onBlur={(e) => {
+                                                                        let val = parseInt(e.target.value);
+                                                                        if (isNaN(val) || val < 1) val = 1;
+                                                                        if (isAvailable && val > maxSelectable) {
+                                                                            console.log('Exceeded max', maxSelectable);
+                                                                            // handleQuantityChange will clamp, but we want to be explicit?
+                                                                            // Trigger update to clamp
+                                                                            handleQuantityChange(item.cart_item_id, val - item.quantity);
+                                                                        }
+                                                                    }}
+                                                                    disabled={updatingId === item.cart_item_id || !isAvailable}
+                                                                    className="w-12 h-8 text-center bg-transparent text-sm font-medium focus:outline-none appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                                                                />
                                                                 <button
                                                                     onClick={() => handleQuantityChange(item.cart_item_id, 1)}
-                                                                    disabled={updatingId === item.cart_item_id}
+                                                                    disabled={updatingId === item.cart_item_id || !isAvailable || item.quantity >= maxSelectable}
                                                                     className="w-8 h-8 flex items-center justify-center text-[#c992c9] hover:text-white hover:bg-[#482348]/50 rounded-r-lg transition-colors disabled:opacity-50"
                                                                 >
                                                                     <span className="material-symbols-outlined text-[16px]">add</span>
                                                                 </button>
                                                             </div>
+                                                            {availableStock !== null && (
+                                                                <span className={`text-[11px] font-medium ${item.quantity > availableStock ? 'text-red-400' : 'text-[#c992c9]'
+                                                                    }`}>
+                                                                    {item.quantity} / {availableStock}
+                                                                </span>
+                                                            )}
                                                         </div>
                                                     </td>
                                                     <td className="px-6 py-6 text-right">
@@ -215,7 +342,7 @@ const CartPage = () => {
                             <div className="flex flex-col gap-4 border-b border-[#482348] pb-6">
                                 <div className="flex justify-between items-center">
                                     <p className="text-[#c992c9]">Subtotal</p>
-                                    <p className="font-medium">{formatPriceVND(subtotal)}</p>
+                                    <p className="font-medium">{formatPriceVND(selectedTotal)}</p>
                                 </div>
                                 <div className="flex justify-between items-center">
                                     <p className="text-[#c992c9]">Shipping Estimate</p>
@@ -243,18 +370,22 @@ const CartPage = () => {
                             <div className="flex justify-between items-end border-t border-[#482348] pt-6 mt-2">
                                 <p className="text-lg font-bold">Total</p>
                                 <div className="text-right">
-                                    <p className="text-3xl font-black tracking-tight leading-none">{formatPriceVND(subtotal)}</p>
+                                    <p className="text-3xl font-black tracking-tight leading-none">{formatPriceVND(selectedTotal)}</p>
                                     <p className="text-xs text-[#c992c9] mt-1">Including VAT</p>
                                 </div>
                             </div>
                             {/* Checkout Button */}
-                            <Link
-                                to="/checkout"
-                                className={`w-full h-14 bg-[#d411d4] hover:bg-[#b00eb0] text-white rounded-lg font-bold text-lg uppercase tracking-wide shadow-lg shadow-[#d411d4]/25 hover:shadow-[#d411d4]/40 transition-all transform hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-2 group ${items.length === 0 ? 'pointer-events-none opacity-60' : ''}`}
+                            <button
+                                type="button"
+                                onClick={handleCheckout}
+                                className={`w-full h-14 bg-[#d411d4] hover:bg-[#b00eb0] text-white rounded-lg font-bold text-lg uppercase tracking-wide shadow-lg shadow-[#d411d4]/25 hover:shadow-[#d411d4]/40 transition-all transform hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-2 group ${(items.length === 0 || selectedTotal <= 0) ? 'pointer-events-none opacity-60' : ''}`}
                             >
                                 Checkout Now
                                 <span className="material-symbols-outlined group-hover:translate-x-1 transition-transform">arrow_forward</span>
-                            </Link>
+                            </button>
+                            {selectedTotal <= 0 && (
+                                <p className="text-xs text-[#c992c9]">Select at least one available item to proceed.</p>
+                            )}
                             {/* Security Badges */}
                             <div className="flex justify-center gap-4 opacity-50 grayscale hover:grayscale-0 transition-all duration-500 mt-2">
                                 <span className="text-xs text-[#c992c9]">Secure Checkout</span>
@@ -264,27 +395,7 @@ const CartPage = () => {
                 </div>
 
                 {/* Recommendations */}
-                <div className="mt-20 md:mt-32">
-                    <h3 className="text-2xl font-bold mb-8">You Might Like</h3>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                        {recommendations.map((item) => (
-                            <Link to={`/product/${item.id}`} key={item.id} className="group cursor-pointer">
-                                <div className="aspect-[4/5] rounded-lg bg-gray-800 border border-[#482348] overflow-hidden relative mb-3">
-                                    <img
-                                        alt={item.name}
-                                        className="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500"
-                                        src={item.image}
-                                    />
-                                    <div className="absolute bottom-3 right-3 bg-[#221022]/80 backdrop-blur rounded-full p-2 text-[#d411d4] opacity-0 group-hover:opacity-100 transition-opacity translate-y-2 group-hover:translate-y-0">
-                                        <span className="material-symbols-outlined text-sm">add_shopping_cart</span>
-                                    </div>
-                                </div>
-                                <h4 className="font-bold text-sm">{item.name}</h4>
-                                <p className="text-[#c992c9] text-xs mt-1">{formatPriceVND(item.price)}</p>
-                            </Link>
-                        ))}
-                    </div>
-                </div>
+
             </main>
 
             {/* Simple Footer */}

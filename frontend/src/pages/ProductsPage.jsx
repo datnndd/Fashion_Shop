@@ -21,24 +21,6 @@ const buildCategoryTree = (items = []) => {
     return roots;
 };
 
-const findCategoryNode = (items = [], targetId) => {
-    for (const item of items) {
-        if (item.category_id.toString() === targetId.toString()) return item;
-        const child = findCategoryNode(item.children || [], targetId);
-        if (child) return child;
-    }
-    return null;
-};
-
-const collectDescendantIds = (node) => {
-    if (!node) return [];
-    const ids = [node.category_id.toString()];
-    (node.children || []).forEach((child) => {
-        ids.push(...collectDescendantIds(child));
-    });
-    return ids;
-};
-
 const ProductsPage = () => {
     const [searchParams, setSearchParams] = useSearchParams();
     const [products, setProducts] = useState([]);
@@ -69,10 +51,8 @@ const ProductsPage = () => {
 
     const categoryFilterIds = useMemo(() => {
         if (selectedCategory === 'all') return null;
-        const node = findCategoryNode(categories, selectedCategory);
-        if (!node) return [selectedCategory.toString()];
-        return collectDescendantIds(node);
-    }, [selectedCategory, categories]);
+        return [selectedCategory.toString()];
+    }, [selectedCategory]);
 
     useEffect(() => {
         const timer = setTimeout(() => {
@@ -101,7 +81,6 @@ const ProductsPage = () => {
         const params = {};
         if (debouncedSearch) params.q = debouncedSearch;
         if (categoryFilterIds?.length === 1) params.category_id = categoryFilterIds[0];
-        if (categoryFilterIds?.length > 1) params.category_ids = categoryFilterIds.join(',');
         if (sortBy !== 'newest') params.sort_by = sortBy;
         if (isSaleFilter) params.is_sale = 'true';
         if (isNewFilter) params.is_new = 'true';
@@ -129,7 +108,6 @@ const ProductsPage = () => {
                 };
 
                 if (categoryFilterIds?.length === 1) params.categoryId = categoryFilterIds[0];
-                if (categoryFilterIds?.length > 1) params.categoryIds = categoryFilterIds;
                 if (isSaleFilter) params.isSale = true;
                 if (isNewFilter) params.isNew = true;
                 if (minPrice) params.minPrice = parseInt(minPrice, 10);
@@ -138,9 +116,13 @@ const ProductsPage = () => {
                 const data = await productsAPI.list(params);
                 const filteredData =
                     categoryFilterIds && categoryFilterIds.length > 0
-                        ? data.filter((product) =>
-                            categoryFilterIds.includes(product.category_id?.toString())
-                        )
+                        ? data.filter((product) => {
+                            const productCategories = product.categories?.map((c) => c.toString()) || [];
+                            return (
+                                categoryFilterIds.includes(product.category_id?.toString()) ||
+                                productCategories.some((cid) => categoryFilterIds.includes(cid))
+                            );
+                        })
                         : data;
                 setProducts(filteredData);
                 setHasMore(filteredData.length === limit && data.length === limit);

@@ -12,6 +12,8 @@ const ProductDetailPage = () => {
     const [variants, setVariants] = useState([]);
     const [reviews, setReviews] = useState([]);
     const [reviewSummary, setReviewSummary] = useState(null);
+    const [relatedProducts, setRelatedProducts] = useState([]);
+    const [relatedLoading, setRelatedLoading] = useState(false);
     const [loading, setLoading] = useState(true);
 
     const [selectedColor, setSelectedColor] = useState(0);
@@ -23,7 +25,7 @@ const ProductDetailPage = () => {
     const [activeImage, setActiveImage] = useState('');
 
     const navigate = useNavigate();
-    const { addToCart } = useCart();
+    const { addToCart, cart } = useCart();
     const { isAuthenticated } = useAuth();
 
     useEffect(() => {
@@ -94,7 +96,7 @@ const ProductDetailPage = () => {
             return colorMatch && sizeMatch;
         });
 
-        return match || variants[0];
+        return match || null;
     }, [variants, colors, selectedColor, selectedSize]);
 
     // Update active image when variant or product changes
@@ -106,12 +108,37 @@ const ProductDetailPage = () => {
         }
     }, [selectedVariant, product]);
 
+    const selectedVariantId = selectedVariant?.variant_id || selectedVariant?.id;
+
     const basePrice = parseFloat(product?.base_price ?? 0);
     const extraPrice = parseFloat(selectedVariant?.price ?? 0);
     const variantPrice = basePrice + extraPrice;
 
     const discountPercent = product?.discount_percent || 0;
     const finalPrice = discountPercent ? variantPrice * (1 - discountPercent / 100) : variantPrice;
+
+    const rawStock = selectedVariant?.stock;
+    const parsedStock = rawStock === null || rawStock === undefined ? null : Number(rawStock);
+    const hasStockNumber = Number.isFinite(parsedStock);
+    const availableStock = hasStockNumber ? Math.max(parsedStock, 0) : null;
+
+    const existingCartQuantity = useMemo(() => {
+        if (!selectedVariantId || !cart?.items) return 0;
+        const match = cart.items.find((item) => item.product_variant_id === selectedVariantId);
+        return match?.quantity || 0;
+    }, [cart, selectedVariantId]);
+
+    const remainingStock = availableStock === null ? null : Math.max(availableStock - existingCartQuantity, 0);
+    const maxSelectableQuantity = remainingStock === null ? Number.MAX_SAFE_INTEGER : remainingStock;
+    const isSelectionAvailable = !!selectedVariant && (remainingStock === null || remainingStock > 0);
+
+    useEffect(() => {
+        if (maxSelectableQuantity === Number.MAX_SAFE_INTEGER) return;
+        setQuantity((prev) => {
+            if (maxSelectableQuantity <= 0) return 1;
+            return prev > maxSelectableQuantity ? maxSelectableQuantity : prev;
+        });
+    }, [maxSelectableQuantity]);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -145,6 +172,30 @@ const ProductDetailPage = () => {
         }
     }, [id]);
 
+    const categoryId = product?.category_id || product?.category?.category_id;
+
+    useEffect(() => {
+        const fetchRelated = async () => {
+            if (!id) {
+                setRelatedProducts([]);
+                return;
+            }
+            setRelatedLoading(true);
+            try {
+                const data = await productsAPI.related(id, 8);
+                const filtered = (data || []).filter((item) => item.product_id !== Number(id));
+                setRelatedProducts(filtered.slice(0, 4));
+            } catch (error) {
+                console.error('Failed to fetch related products:', error);
+                setRelatedProducts([]);
+            } finally {
+                setRelatedLoading(false);
+            }
+        };
+
+        fetchRelated();
+    }, [id]);
+
     if (loading) {
         return <div className="min-h-screen bg-[#221022] text-white flex items-center justify-center">Loading...</div>;
     }
@@ -171,7 +222,46 @@ const ProductDetailPage = () => {
             setActionError('Please select available options.');
             return;
         }
-        // ... (rest of handleAddToCart)
+        if (!isSelectionAvailable) {
+            setActionError('Selected color/size is not available.');
+            return;
+        }
+        if (!isAuthenticated) {
+            setActionError('Please login to add items to your bag.');
+            navigate('/login');
+            return;
+        }
+        if (quantity < 1) {
+            setActionError('Quantity must be at least 1.');
+            return;
+        }
+        if (typeof remainingStock === 'number') {
+            if (remainingStock <= 0) {
+                setActionError('You already have the maximum available quantity in your cart.');
+                return;
+            }
+            if (quantity > remainingStock) {
+                setActionError(`Only ${remainingStock} more unit(s) can be added (you already have ${existingCartQuantity}).`);
+                return;
+            }
+        }
+
+        const variantId = selectedVariantId;
+        if (!variantId) {
+            setActionError('Selected variant is unavailable.');
+            return;
+        }
+
+        setAdding(true);
+        setActionError('');
+        try {
+            await addToCart(variantId, quantity, availableStock);
+            navigate('/cart');
+        } catch (error) {
+            setActionError(error.message || 'Unable to add to cart.');
+        } finally {
+            setAdding(false);
+        }
     };
 
     return (
@@ -322,14 +412,14 @@ const ProductDetailPage = () => {
                                 <div className="w-32 relative">
                                     <div className="flex items-center justify-between w-full h-14 px-4 rounded-lg border border-[#482348]">
                                         <button
-                                            onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                                            onClick={() => setQuantity((prev) => Math.max(1, prev - 1))}
                                             className="hover:text-[#d411d4] transition-colors"
                                         >
                                             <span className="material-symbols-outlined text-sm">remove</span>
                                         </button>
                                         <span className="font-bold">{quantity}</span>
                                         <button
-                                            onClick={() => setQuantity(quantity + 1)}
+                                            onClick={() => setQuantity((prev) => Math.max(1, Math.min(prev + 1, maxSelectableQuantity)))}
                                             className="hover:text-[#d411d4] transition-colors"
                                         >
                                             <span className="material-symbols-outlined text-sm">add</span>
@@ -339,7 +429,7 @@ const ProductDetailPage = () => {
                                 <button
                                     type="button"
                                     onClick={handleAddToCart}
-                                    disabled={adding}
+                                    disabled={adding || !isSelectionAvailable}
                                     className="flex-1 h-14 bg-[#d411d4] hover:bg-[#b00eb0] disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-lg font-bold text-lg tracking-wide transition-all shadow-lg shadow-[#d411d4]/25 flex items-center justify-center gap-2"
                                 >
                                     {adding ? 'Adding...' : 'Add to Bag'}
@@ -347,6 +437,15 @@ const ProductDetailPage = () => {
                                 </button>
                             </div>
                             {actionError && <p className="text-red-300 text-sm">{actionError}</p>}
+                            {!actionError && !isSelectionAvailable && (
+                                <p className="text-amber-300 text-sm">Combination of color/size is unavailable.</p>
+                            )}
+                            {isSelectionAvailable && (
+                                <p className="text-xs text-[#c992c9]">
+                                    Available stock: {remainingStock === null ? 'Unlimited' : remainingStock}
+                                    {remainingStock !== null && existingCartQuantity > 0 ? ` (in cart: ${existingCartQuantity})` : ''}
+                                </p>
+                            )}
 
                             {/* Description Text */}
                             <p className="text-gray-300 leading-relaxed pt-2">
@@ -377,6 +476,75 @@ const ProductDetailPage = () => {
                         </div>
                     </div>
                 </div>
+
+                {/* Related Products */}
+                {(relatedLoading || categoryId) && (
+                    <section className="mt-24">
+                        <div className="flex items-center justify-between mb-6">
+                            <h3 className="text-2xl font-bold">Related Products</h3>
+                            {categoryId && (
+                                <Link
+                                    to={`/products?category_id=${categoryId}`}
+                                    className="text-sm text-[#d411d4] font-bold hover:text-white transition-colors"
+                                >
+                                    View category
+                                </Link>
+                            )}
+                        </div>
+                        {relatedLoading ? (
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                                {Array(4).fill(0).map((_, idx) => (
+                                    <div key={idx} className="rounded-xl border border-[#482348] bg-[#2d162d] p-4 animate-pulse">
+                                        <div className="aspect-[3/4] bg-white/10 rounded-lg mb-4"></div>
+                                        <div className="h-4 bg-white/10 rounded mb-2"></div>
+                                        <div className="h-4 bg-white/10 rounded w-1/2"></div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : relatedProducts.length > 0 ? (
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                                {relatedProducts.map((item) => {
+                                    const price = item.sale_price || item.base_price || 0;
+                                    const hasDiscount = item.discount_percent && item.discount_percent > 0;
+                                    return (
+                                        <Link
+                                            key={item.product_id}
+                                            to={`/product/${item.product_id}`}
+                                            className="group relative rounded-xl overflow-hidden border border-[#482348] bg-[#2d162d] hover:border-[#d411d4]/50 transition-all shadow-lg shadow-[#d411d4]/5"
+                                        >
+                                            <div className="aspect-[3/4] w-full bg-[#1a0d1a] overflow-hidden">
+                                                {item.thumbnail ? (
+                                                    <img
+                                                        src={item.thumbnail}
+                                                        alt={item.name}
+                                                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                                                    />
+                                                ) : (
+                                                    <div className="w-full h-full flex items-center justify-center text-[#c992c9] text-sm">
+                                                        No image
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="p-4 flex flex-col gap-2">
+                                                <h4 className="font-bold text-white leading-tight group-hover:text-[#d411d4] transition-colors line-clamp-2">
+                                                    {item.name}
+                                                </h4>
+                                                <div className="flex items-center gap-2 text-sm">
+                                                    <span className="font-bold text-[#d411d4]">{formatPriceVND(price)}</span>
+                                                    {hasDiscount && (
+                                                        <span className="text-gray-500 line-through">{formatPriceVND(item.base_price)}</span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </Link>
+                                    );
+                                })}
+                            </div>
+                        ) : (
+                            <p className="text-sm text-[#c992c9]">No related products found in this category.</p>
+                        )}
+                    </section>
+                )}
 
                 {/* Reviews Section */}
                 <div className="mt-24">

@@ -1,16 +1,24 @@
-import { Link, useNavigate } from 'react-router-dom';
-import { useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { useEffect, useMemo } from 'react';
 import { formatPriceVND } from '../utils/currency';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 
 const CheckoutPage = () => {
     const navigate = useNavigate();
+    const location = useLocation();
     const { cart, cartCount, loading: cartLoading } = useCart();
     const { isAuthenticated, loading: authLoading } = useAuth();
 
+    const selectedIds = location.state?.selectedIds || null;
     const items = cart?.items || [];
-    const subtotal = cart?.subtotal || 0;
+    const filteredItems = useMemo(() => {
+        if (!selectedIds || selectedIds.length === 0) return items.filter((i) => i.is_available);
+        const idSet = new Set(selectedIds);
+        return items.filter((i) => idSet.has(i.cart_item_id) && i.is_available);
+    }, [items, selectedIds]);
+
+    const subtotal = filteredItems.reduce((sum, item) => sum + (item.line_total || 0), 0);
     const shipping = 0;
     const taxes = 0;
     const total = subtotal + shipping + taxes;
@@ -26,6 +34,12 @@ const CheckoutPage = () => {
             navigate('/cart');
         }
     }, [cartLoading, cartCount, isAuthenticated, navigate]);
+
+    useEffect(() => {
+        if (!cartLoading && filteredItems.length === 0) {
+            navigate('/cart');
+        }
+    }, [cartLoading, filteredItems, navigate]);
 
     return (
         <div className="bg-[#221022] font-[Space_Grotesk] text-white min-h-screen flex flex-col">
@@ -224,10 +238,10 @@ const CheckoutPage = () => {
                                                 </div>
                                             ))}
                                         </div>
-                                    ) : items.length === 0 ? (
+                                    ) : filteredItems.length === 0 ? (
                                         <p className="text-sm text-[#c992c9]">Your cart is empty.</p>
                                     ) : (
-                                        items.map((item) => {
+                                        filteredItems.map((item) => {
                                             const attrs = item.variant_attributes || {};
                                             const colorName = attrs.color_name || attrs.color || 'Color';
                                             const sizeLabel = attrs.size || attrs.size_name || 'Size';
@@ -240,7 +254,7 @@ const CheckoutPage = () => {
                                                             style={{ backgroundImage: `url('${item.product.thumbnail}')` }}
                                                         ></div>
                                                         <span className="absolute -top-2 -right-2 bg-gray-500 text-white text-xs font-bold min-w-[24px] h-6 px-1 flex items-center justify-center rounded-full shadow-md">
-                                                            {item.quantity}
+                                                            {item.purchasable_quantity || item.quantity}
                                                         </span>
                                                     </div>
                                                     <div className="flex flex-1 flex-col justify-between py-1">

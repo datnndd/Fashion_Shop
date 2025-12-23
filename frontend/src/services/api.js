@@ -68,6 +68,7 @@ export const productsAPI = {
         return fetchAPI(`/catalog/products${queryString ? `?${queryString}` : ''}`);
     },
     get: (productId) => fetchAPI(`/catalog/products/${productId}`),
+    related: (productId, limit = 8) => fetchAPI(`/catalog/products/${productId}/related?limit=${limit}`),
     create: (data) => {
         const token = localStorage.getItem('token');
         return fetchAPI('/catalog/products', {

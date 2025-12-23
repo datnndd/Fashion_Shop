@@ -21,7 +21,7 @@ export const CartProvider = ({ children }) => {
             const data = await cartAPI.getMyCart();
             setCart(data);
         } catch (err) {
-            setError(err.message || 'Không thể tải giỏ hàng');
+            setError(err.message || 'Unable to load cart.');
         } finally {
             setLoading(false);
         }
@@ -34,15 +34,23 @@ export const CartProvider = ({ children }) => {
     }, [authLoading, refreshCart]);
 
     const addToCart = useCallback(
-        async (productVariantId, quantity = 1) => {
+        async (productVariantId, quantity = 1, availableStock = null) => {
             if (!isAuthenticated) {
-                throw new Error('Bạn cần đăng nhập để thêm sản phẩm vào giỏ hàng');
+                throw new Error('Please log in to add products to your cart.');
+            }
+            const existingQty = Array.isArray(cart?.items)
+                ? cart.items.find((item) => item.product_variant_id === productVariantId)?.quantity || 0
+                : 0;
+            const normalizedStock = Number.isFinite(availableStock) ? Math.max(availableStock, 0) : null;
+            if (normalizedStock !== null && existingQty + quantity > normalizedStock) {
+                const remaining = Math.max(normalizedStock - existingQty, 0);
+                throw new Error(`Only ${remaining} more unit(s) can be added for this product due to stock limits.`);
             }
             const data = await cartAPI.addItem({ product_variant_id: productVariantId, quantity });
             setCart(data);
             return data;
         },
-        [isAuthenticated]
+        [isAuthenticated, cart]
     );
 
     const updateItem = useCallback(async (cartItemId, quantity) => {

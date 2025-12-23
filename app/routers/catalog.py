@@ -12,6 +12,46 @@ from app.schemas.variant import ProductVariantCreate, ProductVariantRead
 router = APIRouter(prefix="/catalog", tags=["catalog"])
 
 
+async def _get_product_categories(session: AsyncSession, product_id: int) -> list[int]:
+    """Return category ids for a product (from join table)."""
+    result = await session.execute(
+        text("SELECT category_id FROM product_categories WHERE product_id = :product_id"),
+        {"product_id": product_id}
+    )
+    return [row.category_id for row in result]
+
+
+async def _set_product_categories(session: AsyncSession, product_id: int, category_ids: list[int]) -> None:
+    """Replace product categories with provided list."""
+    await session.execute(
+        text("DELETE FROM product_categories WHERE product_id = :product_id"),
+        {"product_id": product_id}
+    )
+    if category_ids:
+        await session.execute(
+            text("""
+                INSERT INTO product_categories (product_id, category_id)
+                SELECT :product_id, UNNEST(:category_ids::int[])
+                ON CONFLICT DO NOTHING
+            """),
+            {"product_id": product_id, "category_ids": category_ids}
+        )
+
+
+async def _get_categories_for_products(session: AsyncSession, product_ids: list[int]) -> dict[int, list[int]]:
+    """Fetch categories for multiple products in one query."""
+    if not product_ids:
+        return {}
+    result = await session.execute(
+        text("SELECT product_id, category_id FROM product_categories WHERE product_id = ANY(:product_ids)"),
+        {"product_ids": product_ids}
+    )
+    mapping: dict[int, list[int]] = {}
+    for row in result:
+        mapping.setdefault(row.product_id, []).append(row.category_id)
+    return mapping
+
+
 # ==================== CATEGORIES ====================
 
 @router.post("/categories", response_model=CategoryRead, status_code=status.HTTP_201_CREATED)
@@ -208,6 +248,11 @@ async def create_product(
     )
     product = dict(product_result.mappings().one())
 
+    # Persist categories (primary + additional)
+    category_ids = set(payload.categories or [])
+    category_ids.add(payload.category_id)
+    await _set_product_categories(session, product["product_id"], list(category_ids))
+
     # Insert variants
     variants = []
     for variant_data in payload.variants:
@@ -270,6 +315,11 @@ async def get_product(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
     
     product = dict(product)
+    # Attach categories list (fallback to primary)
+    categories = await _get_product_categories(session, product_id)
+    if not categories and product.get("category_id") is not None:
+        categories = [product["category_id"]]
+    product["categories"] = categories
     
     # Sanitize images
     if isinstance(product.get("images"), dict):
@@ -308,7 +358,8 @@ async def update_product(
         text("SELECT * FROM products WHERE product_id = :product_id"),
         {"product_id": product_id}
     )
-    if not result.mappings().one_or_none():
+    current_product = result.mappings().one_or_none()
+    if not current_product:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
 
     # Build dynamic update
@@ -328,12 +379,20 @@ async def update_product(
                 set_parts.append("updated_at = NOW()")
             else:
                 set_parts.append(f"{key} = :{key}")
-                params[key] = value
+            params[key] = value
         
         await session.execute(
             text(f"UPDATE products SET {', '.join(set_parts)} WHERE product_id = :product_id"),
             params
         )
+
+    # Update categories mapping when primary category or category list changes
+    if payload.categories is not None or payload.category_id is not None:
+        new_primary_category = payload.category_id if payload.category_id is not None else current_product["category_id"]
+        category_ids = set(payload.categories or [])
+        if new_primary_category is not None:
+            category_ids.add(new_primary_category)
+        await _set_product_categories(session, product_id, list(category_ids))
 
     # Handle variants update
     if payload.variants is not None:
@@ -410,6 +469,10 @@ async def update_product(
         {"product_id": product_id}
     )
     product = dict(result.mappings().one())
+    categories = await _get_product_categories(session, product_id)
+    if not categories and product.get("category_id") is not None:
+        categories = [product["category_id"]]
+    product["categories"] = categories
     
     # Get variants
     var_result = await session.execute(
@@ -474,41 +537,37 @@ async def list_products(
     params = {"limit": limit, "offset": offset}
 
     if q:
-        conditions.append("(name ILIKE :q OR description ILIKE :q)")
+        conditions.append("(p.name ILIKE :q OR p.description ILIKE :q)")
         params["q"] = f"%{q}%"
     if min_price is not None:
-        conditions.append("base_price >= :min_price")
+        conditions.append("p.base_price >= :min_price")
         params["min_price"] = min_price
     if max_price is not None:
-        conditions.append("base_price <= :max_price")
+        conditions.append("p.base_price <= :max_price")
         params["max_price"] = max_price
     if category_id is not None:
-        # Get category and direct subcategories (2-level support)
-        # Note: For deeper hierarchies, a recursive query (CTE) would be needed.
-        cat_ids_result = await session.execute(
-            text("SELECT category_id FROM categories WHERE category_id = :cid OR parent_id = :cid"),
-            {"cid": category_id}
-        )
-        category_ids = [row.category_id for row in cat_ids_result]
-        
-        if category_ids:
-            conditions.append("category_id = ANY(:category_ids)")
-            params["category_ids"] = category_ids
-        else:
-            # If category doesn't exist, ensure no results
-            conditions.append("1 = 0")
+        conditions.append("""
+            (
+                p.category_id = :category_id
+                OR EXISTS (
+                    SELECT 1 FROM product_categories pc
+                    WHERE pc.product_id = p.product_id AND pc.category_id = :category_id
+                )
+            )
+        """)
+        params["category_id"] = category_id
     if is_new is not None:
-        conditions.append("is_new = :is_new")
+        conditions.append("p.is_new = :is_new")
         params["is_new"] = is_new
     if is_sale is not None:
         if is_sale:
-            conditions.append("discount_percent > 0")
+            conditions.append("p.discount_percent > 0")
         else:
-            conditions.append("discount_percent = 0")
+            conditions.append("p.discount_percent = 0")
     if is_published is not None and is_published.lower() != "all":
         # Parse boolean
         is_pub_bool = is_published.lower() == "true"
-        conditions.append("is_published = :is_published")
+        conditions.append("p.is_published = :is_published")
         params["is_published"] = is_pub_bool
     
     where_clause = " WHERE " + " AND ".join(conditions) if conditions else ""
@@ -527,21 +586,28 @@ async def list_products(
             LIMIT :limit OFFSET :offset
         """)
     elif sort_by == "price_asc":
-        order_clause = "ORDER BY base_price ASC"
-        query = text(f"SELECT * FROM products{where_clause} {order_clause} LIMIT :limit OFFSET :offset")
+        order_clause = "ORDER BY p.base_price ASC"
+        query = text(f"SELECT p.* FROM products p{where_clause} {order_clause} LIMIT :limit OFFSET :offset")
     elif sort_by == "price_desc":
-        order_clause = "ORDER BY base_price DESC"
-        query = text(f"SELECT * FROM products{where_clause} {order_clause} LIMIT :limit OFFSET :offset")
+        order_clause = "ORDER BY p.base_price DESC"
+        query = text(f"SELECT p.* FROM products p{where_clause} {order_clause} LIMIT :limit OFFSET :offset")
     else:
         # Default newest
-        order_clause = "ORDER BY created_at DESC"
-        query = text(f"SELECT * FROM products{where_clause} {order_clause} LIMIT :limit OFFSET :offset")
+        order_clause = "ORDER BY p.created_at DESC"
+        query = text(f"SELECT p.* FROM products p{where_clause} {order_clause} LIMIT :limit OFFSET :offset")
 
     result = await session.execute(query, params)
     products = [dict(p) for p in result.mappings().all()]
-    
+
+    # Load categories for all products
+    categories_map = await _get_categories_for_products(session, [p["product_id"] for p in products])
+
     # Get variants for each product
     for product in products:
+        product_categories = categories_map.get(product["product_id"], [])
+        if not product_categories and product.get("category_id") is not None:
+            product_categories = [product["category_id"]]
+        product["categories"] = product_categories
         # Sanitize images
         if isinstance(product.get("images"), dict):
             product["images"] = []
@@ -555,6 +621,72 @@ async def list_products(
         product["sale_price"] = float(product["base_price"]) * (1 - product["discount_percent"] / 100) if product["discount_percent"] > 0 else None
         product["colors"] = _extract_colors(variants)
     
+    return products
+
+
+@router.get("/products/{product_id}/related", response_model=list[ProductRead])
+async def related_products(
+    product_id: int,
+    limit: int = Query(default=8, le=50),
+    session: AsyncSession = Depends(get_session),
+) -> list[ProductRead]:
+    """
+    Fetch products that share categories with the target product, ordered by overlap score.
+    """
+    # Ensure product exists and get its categories
+    prod_result = await session.execute(
+        text("SELECT * FROM products WHERE product_id = :product_id"),
+        {"product_id": product_id}
+    )
+    base_product = prod_result.mappings().one_or_none()
+    if not base_product:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
+
+    category_ids = await _get_product_categories(session, product_id)
+    if not category_ids and base_product.get("category_id") is not None:
+        category_ids = [base_product["category_id"]]
+    if not category_ids:
+        return []
+
+    query = text("""
+        WITH target_cats AS (
+            SELECT UNNEST(:category_ids::int[]) AS category_id
+        )
+        SELECT p.*, COUNT(*) AS score
+        FROM products p
+        JOIN product_categories pc ON pc.product_id = p.product_id
+        JOIN target_cats tc ON tc.category_id = pc.category_id
+        WHERE p.product_id <> :product_id
+          AND p.is_published = TRUE
+        GROUP BY p.product_id
+        ORDER BY score DESC, p.created_at DESC
+        LIMIT :limit
+    """)
+    result = await session.execute(
+        query,
+        {"category_ids": category_ids, "product_id": product_id, "limit": limit}
+    )
+    products = [dict(row) for row in result.mappings().all()]
+
+    categories_map = await _get_categories_for_products(session, [p["product_id"] for p in products])
+
+    for product in products:
+        product_categories = categories_map.get(product["product_id"], [])
+        if not product_categories and product.get("category_id") is not None:
+            product_categories = [product["category_id"]]
+        product["categories"] = product_categories
+        if isinstance(product.get("images"), dict):
+            product["images"] = []
+        var_result = await session.execute(
+            text("SELECT * FROM product_variants WHERE product_id = :product_id"),
+            {"product_id": product["product_id"]}
+        )
+        variants = [dict(v) for v in var_result.mappings().all()]
+        product["variants"] = variants
+        product["is_sale"] = product["discount_percent"] > 0 if product["discount_percent"] else False
+        product["sale_price"] = float(product["base_price"]) * (1 - product["discount_percent"] / 100) if product["discount_percent"] > 0 else None
+        product["colors"] = _extract_colors(variants)
+
     return products
 
 

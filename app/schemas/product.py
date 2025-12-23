@@ -6,6 +6,7 @@ from app.schemas.category import CategoryRead
 
 class ProductBase(BaseModel):
     category_id: int
+    categories: list[int] | None = None  # Additional categories besides primary
     name: str
     slug: str
     description: str | None = None
@@ -30,6 +31,7 @@ class ProductCreateWithVariants(ProductBase):
 class ProductUpdate(BaseModel):
     """Schema for updating a product."""
     category_id: int | None = None
+    categories: list[int] | None = None
     name: str | None = None
     slug: str | None = None
     description: str | None = None
@@ -52,6 +54,8 @@ ProductUpdate.model_rebuild()
 
 class ProductRead(ProductBase):
     product_id: int
+    categories: list[int] = []
+    score: int | None = None
     colors: list[str] = []
     is_sale: bool = False
     sale_price: float | None = None

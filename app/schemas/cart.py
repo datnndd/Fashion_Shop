@@ -20,6 +20,18 @@ class CartItemRead(BaseModel):
     product_variant_id: int
     quantity: int
     variant_attributes: Optional[dict] = None
+    available_stock: Optional[int] = Field(
+        default=None,
+        description="Current stock for the selected variant; null means unknown or unlimited",
+    )
+    purchasable_quantity: int = Field(
+        default=0,
+        description="Quantity that can be purchased based on current stock",
+    )
+    is_available: bool = Field(
+        default=False,
+        description="Whether the variant is available for purchase",
+    )
     unit_price: float = Field(description="Effective unit price after discount if any")
     line_total: float
     product: CartProduct
