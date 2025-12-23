@@ -21,6 +21,7 @@ import AdminCategories from './pages/admin/AdminCategories';
 import AdminOrders from './pages/admin/AdminOrders';
 import AdminUsers from './pages/admin/AdminUsers';
 import AdminReviews from './pages/admin/AdminReviews';
+import AdminDiscounts from './pages/admin/AdminDiscounts';
 
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
@@ -172,6 +173,7 @@ const AppContent = () => {
           <Route path="orders" element={<AdminOrders />} />
           <Route path="users" element={<AdminUsers />} />
           <Route path="reviews" element={<AdminReviews />} />
+          <Route path="discounts" element={<AdminDiscounts />} />
         </Route>
       </Routes>
     </div>

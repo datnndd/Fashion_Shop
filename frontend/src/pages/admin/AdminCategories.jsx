@@ -3,6 +3,7 @@ import { categoriesAPI, uploadAPI } from '../../services/api';
 
 const API_BASE = 'http://localhost:8000';
 
+
 const AdminCategories = () => {
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -18,6 +19,7 @@ const AdminCategories = () => {
         slug: '',
         description: '',
         image: '',
+        parent_id: '',
         is_active: true
     });
 
@@ -56,6 +58,7 @@ const AdminCategories = () => {
             slug: '',
             description: '',
             image: '',
+            parent_id: '',
             is_active: true
         });
         setShowModal(true);
@@ -69,6 +72,7 @@ const AdminCategories = () => {
             slug: category.slug || '',
             description: category.description || '',
             image: category.image || '',
+            parent_id: category.parent_id || '',
             is_active: category.is_active ?? true
         });
         setShowModal(true);
@@ -123,6 +127,7 @@ const AdminCategories = () => {
                 slug: formData.slug,
                 description: formData.description || null,
                 image: formData.image || null,
+                parent_id: formData.parent_id ? parseInt(formData.parent_id) : null,
                 is_active: formData.is_active
             };
 
@@ -163,6 +168,12 @@ const AdminCategories = () => {
             </div>
         );
     }
+
+    // Helper to get parent category name
+    const getParentName = (parentId) => {
+        const parent = categories.find(c => c.category_id === parentId);
+        return parent ? parent.name : '';
+    };
 
     return (
         <div className="space-y-6">
@@ -210,8 +221,8 @@ const AdminCategories = () => {
                             )}
                             {/* Status badge */}
                             <span className={`absolute top-3 right-3 px-2 py-1 rounded text-xs font-medium ${category.is_active
-                                    ? 'bg-green-500/20 text-green-400'
-                                    : 'bg-yellow-500/20 text-yellow-400'
+                                ? 'bg-green-500/20 text-green-400'
+                                : 'bg-yellow-500/20 text-yellow-400'
                                 }`}>
                                 {category.is_active ? 'Active' : 'Inactive'}
                             </span>
@@ -220,6 +231,12 @@ const AdminCategories = () => {
                         {/* Category info */}
                         <div className="p-4">
                             <h3 className="font-semibold text-lg">{category.name}</h3>
+                            {category.parent_id && (
+                                <p className="text-[#d411d4] text-xs font-medium mt-1 flex items-center gap-1">
+                                    <span className="material-symbols-outlined text-[14px]">subdirectory_arrow_right</span>
+                                    Parent: {getParentName(category.parent_id)}
+                                </p>
+                            )}
                             <p className="text-gray-400 text-sm mt-1 line-clamp-2">
                                 {category.description || 'No description'}
                             </p>
@@ -307,6 +324,27 @@ const AdminCategories = () => {
                                     className="w-full bg-white/5 rounded-lg px-4 py-3 text-sm border border-white/10 focus:border-[#d411d4] outline-none transition-colors"
                                     placeholder="category-slug"
                                 />
+                            </div>
+
+                            {/* Parent Category */}
+                            <div>
+                                <label className="block text-sm font-medium mb-2">Parent Category</label>
+                                <select
+                                    name="parent_id"
+                                    value={formData.parent_id}
+                                    onChange={handleInputChange}
+                                    className="w-full bg-white/5 rounded-lg px-4 py-3 text-sm border border-white/10 focus:border-[#d411d4] outline-none transition-colors text-white"
+                                >
+                                    <option value="" className="bg-[#1a1a2e]">None (Top Level)</option>
+                                    {categories
+                                        .filter(c => !selectedCategory || c.category_id !== selectedCategory.category_id)
+                                        .map(c => (
+                                            <option key={c.category_id} value={c.category_id} className="bg-[#1a1a2e]">
+                                                {c.name}
+                                            </option>
+                                        ))
+                                    }
+                                </select>
                             </div>
 
                             {/* Description */}

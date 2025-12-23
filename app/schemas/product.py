@@ -40,12 +40,14 @@ class ProductUpdate(BaseModel):
     badge: str | None = None
     images: list[str] | None = None
     is_published: bool | None = None
+    variants: list["ProductVariantUpdate"] | None = None
 
 
 
 # Import here to avoid circular imports
-from app.schemas.variant import ProductVariantCreate
+from app.schemas.variant import ProductVariantCreate, ProductVariantUpdate
 ProductCreateWithVariants.model_rebuild()
+ProductUpdate.model_rebuild()
 
 
 class ProductRead(ProductBase):

@@ -42,7 +42,8 @@ async def _build_cart_response(session: AsyncSession, cart: dict) -> CartRead:
                 p.product_id,
                 p.name AS product_name,
                 p.thumbnail,
-                p.discount_percent
+                p.discount_percent,
+                p.base_price
             FROM cart_items ci
             JOIN product_variants pv ON ci.product_variant_id = pv.variant_id
             JOIN products p ON pv.product_id = p.product_id
@@ -58,9 +59,12 @@ async def _build_cart_response(session: AsyncSession, cart: dict) -> CartRead:
 
     for row in items_result.mappings().all():
         discount_percent = row["discount_percent"] or 0
-        variant_price = float(row["variant_price"])
-        sale_price = variant_price * (1 - discount_percent / 100) if discount_percent else None
-        unit_price = sale_price if sale_price is not None else variant_price
+        base_price = float(row["base_price"] or 0)
+        extra_price = float(row["variant_price"] or 0)
+        total_price = base_price + extra_price
+        
+        sale_price = total_price * (1 - discount_percent / 100) if discount_percent else None
+        unit_price = sale_price if sale_price is not None else total_price
         line_total = unit_price * row["quantity"]
         subtotal += line_total
 
@@ -76,7 +80,7 @@ async def _build_cart_response(session: AsyncSession, cart: dict) -> CartRead:
                     "product_id": row["product_id"],
                     "name": row["product_name"],
                     "thumbnail": row["thumbnail"],
-                    "price": variant_price,
+                    "price": total_price,
                     "discount_percent": discount_percent,
                     "sale_price": sale_price,
                 },

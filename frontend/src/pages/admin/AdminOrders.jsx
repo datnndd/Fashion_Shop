@@ -159,11 +159,11 @@ const AdminOrders = () => {
                                         value={tempStatus || selectedOrder.status}
                                         onChange={(e) => setTempStatus(e.target.value)}
                                     >
-                                        <option value="pending">Pending</option>
-                                        <option value="processing">Processing</option>
-                                        <option value="shipped">Shipped</option>
-                                        <option value="delivered">Delivered</option>
-                                        <option value="cancelled">Cancelled</option>
+                                        <option value="pending" className="bg-[#1a1a2e]">Pending</option>
+                                        <option value="processing" className="bg-[#1a1a2e]">Processing</option>
+                                        <option value="shipped" className="bg-[#1a1a2e]">Shipped</option>
+                                        <option value="delivered" className="bg-[#1a1a2e]">Delivered</option>
+                                        <option value="cancelled" className="bg-[#1a1a2e]">Cancelled</option>
                                     </select>
                                     {tempStatus && tempStatus !== selectedOrder.status && (
                                         <button

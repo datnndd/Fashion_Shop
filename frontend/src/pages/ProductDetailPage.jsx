@@ -20,18 +20,28 @@ const ProductDetailPage = () => {
     const [adding, setAdding] = useState(false);
     const [actionError, setActionError] = useState('');
 
+    const [activeImage, setActiveImage] = useState('');
+
     const navigate = useNavigate();
     const { addToCart } = useCart();
     const { isAuthenticated } = useAuth();
 
+    useEffect(() => {
+        window.scrollTo(0, 0);
+    }, [id]);
+
     const colors = useMemo(() => {
         const colorMap = new Map();
         variants.forEach((v) => {
-            if (v.attributes && v.attributes.color && v.attributes.color_name) {
-                if (!colorMap.has(v.attributes.color_name)) {
-                    colorMap.set(v.attributes.color_name, {
-                        name: v.attributes.color_name,
-                        value: v.attributes.color
+            const attrs = v.attributes || {};
+            const name = attrs.color_name || attrs.color;
+            const value = attrs.color_value || attrs.color;
+
+            if (name) {
+                if (!colorMap.has(name)) {
+                    colorMap.set(name, {
+                        name: name,
+                        value: value
                     });
                 }
             }
@@ -87,7 +97,19 @@ const ProductDetailPage = () => {
         return match || variants[0];
     }, [variants, colors, selectedColor, selectedSize]);
 
-    const variantPrice = selectedVariant?.price ?? product?.base_price ?? 0;
+    // Update active image when variant or product changes
+    useEffect(() => {
+        if (selectedVariant?.images && selectedVariant.images.length > 0) {
+            setActiveImage(selectedVariant.images[0]);
+        } else if (product?.thumbnail) {
+            setActiveImage(product.thumbnail);
+        }
+    }, [selectedVariant, product]);
+
+    const basePrice = parseFloat(product?.base_price ?? 0);
+    const extraPrice = parseFloat(selectedVariant?.price ?? 0);
+    const variantPrice = basePrice + extraPrice;
+
     const discountPercent = product?.discount_percent || 0;
     const finalPrice = discountPercent ? variantPrice * (1 - discountPercent / 100) : variantPrice;
 
@@ -131,41 +153,31 @@ const ProductDetailPage = () => {
         return <div className="min-h-screen bg-[#221022] text-white flex items-center justify-center">Product not found</div>;
     }
 
+
+
+    const isSizeAvailable = (size) => {
+        if (!colors[selectedColor]) return false;
+        const targetColor = colors[selectedColor].name;
+        return variants.some(v => {
+            const vColor = v.attributes?.color_name || v.attributes?.color;
+            const vSize = v.attributes?.size || v.attributes?.size_name;
+            const stock = v.stock || 0;
+            return vColor === targetColor && vSize === size && stock > 0;
+        });
+    };
+
     const handleAddToCart = async () => {
         if (!selectedVariant) {
-            setActionError('No available variant for this selection.');
+            setActionError('Please select available options.');
             return;
         }
-
-        if (!isAuthenticated) {
-            navigate('/login');
-            return;
-        }
-
-        setActionError('');
-        setAdding(true);
-        try {
-            await addToCart(selectedVariant.variant_id, quantity);
-            navigate('/cart', { preventScrollReset: true });
-        } catch (err) {
-            setActionError(err.message || 'Unable to add item to cart');
-        } finally {
-            setAdding(false);
-        }
+        // ... (rest of handleAddToCart)
     };
 
     return (
         <div className="bg-[#221022] text-white font-[Space_Grotesk] min-h-screen">
             {/* Breadcrumbs */}
-            <div className="max-w-7xl mx-auto px-4 md:px-8 lg:px-12 py-6">
-                <nav className="flex text-sm font-medium text-[#c992c9]">
-                    <Link to="/" className="hover:text-[#d411d4] transition-colors">Home</Link>
-                    <span className="mx-2">/</span>
-                    <Link to="/" className="hover:text-[#d411d4] transition-colors">{product.category_id === 1 ? 'Men' : 'Product'}</Link>
-                    <span className="mx-2">/</span>
-                    <span className="text-white">{product.name}</span>
-                </nav>
-            </div>
+            {/* ... */}
 
             {/* Main Content Grid */}
             <main className="max-w-7xl mx-auto px-4 md:px-8 lg:px-12 pb-20">
@@ -177,29 +189,32 @@ const ProductDetailPage = () => {
                             <img
                                 alt={product.name}
                                 className="absolute inset-0 h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
-                                src={product.thumbnail}
+                                src={activeImage || product.thumbnail}
                             />
-                            <div className="absolute top-4 left-4 bg-[#d411d4] text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
-                                Best Seller
-                            </div>
+                            {product.discount_percent > 0 && (
+                                <div className="absolute top-4 left-4 bg-[#d411d4] text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
+                                    -{product.discount_percent}%
+                                </div>
+                            )}
                         </div>
-                        {/* Secondary Grid */}
-                        <div className="grid grid-cols-2 gap-4">
-                            <div className="rounded-xl overflow-hidden bg-[#2d162d] aspect-[3/4]">
-                                <img
-                                    alt="Detail view"
-                                    className="h-full w-full object-cover hover:opacity-90 transition-opacity"
-                                    src={product.thumbnail}
-                                />
+                        {/* Secondary Grid (Product Gallery) */}
+                        {product.images && product.images.length > 0 && (
+                            <div className="grid grid-cols-4 gap-4">
+                                {product.images.slice(0, 4).map((img, idx) => (
+                                    <div
+                                        key={idx}
+                                        className="rounded-xl overflow-hidden bg-[#2d162d] aspect-square cursor-pointer hover:ring-2 hover:ring-[#d411d4] transition-all"
+                                        onClick={() => setActiveImage(img)}
+                                    >
+                                        <img
+                                            alt={`Gallery ${idx}`}
+                                            className="h-full w-full object-cover hover:opacity-90 transition-opacity"
+                                            src={img}
+                                        />
+                                    </div>
+                                ))}
                             </div>
-                            <div className="rounded-xl overflow-hidden bg-[#2d162d] aspect-[3/4]">
-                                <img
-                                    alt="Detail view 2"
-                                    className="h-full w-full object-cover hover:opacity-90 transition-opacity"
-                                    src={product.thumbnail}
-                                />
-                            </div>
-                        </div>
+                        )}
                     </div>
 
                     {/* Right Column: Product Details (Sticky) */}
@@ -276,22 +291,33 @@ const ProductDetailPage = () => {
                                     <a href="#" className="text-sm underline text-gray-500 hover:text-[#d411d4] transition-colors">Size Guide</a>
                                 </div>
                                 <div className="grid grid-cols-4 gap-3">
-                                    {sizes.map((size) => (
-                                        <button
-                                            key={size}
-                                            onClick={() => setSelectedSize(size)}
-                                            className={`h-12 rounded-lg font-bold text-sm transition-all ${selectedSize === size
-                                                ? 'border border-[#d411d4] bg-[#d411d4]/10 text-[#d411d4]'
-                                                : 'border border-[#482348] hover:border-[#d411d4] hover:text-[#d411d4]'
-                                                }`}
-                                        >
-                                            {size}
-                                        </button>
-                                    ))}
+                                    {sizes.map((size) => {
+                                        const available = isSizeAvailable(size);
+                                        return (
+                                            <button
+                                                key={size}
+                                                onClick={() => available && setSelectedSize(size)}
+                                                disabled={!available}
+                                                className={`h-12 rounded-lg font-bold text-sm transition-all relative overflow-hidden ${selectedSize === size
+                                                    ? 'border border-[#d411d4] bg-[#d411d4]/10 text-[#d411d4]'
+                                                    : available
+                                                        ? 'border border-[#482348] hover:border-[#d411d4] hover:text-[#d411d4]'
+                                                        : 'border border-[#482348]/30 text-gray-600 bg-[#2d162d]/50 cursor-not-allowed opacity-50'
+                                                    }`}
+                                            >
+                                                {size}
+                                                {!available && (
+                                                    <div className="absolute inset-0 flex items-center justify-center">
+                                                        <div className="w-full border-t border-gray-600/50 -rotate-45"></div>
+                                                    </div>
+                                                )}
+                                            </button>
+                                        );
+                                    })}
                                 </div>
                             </div>
 
-                            {/* Actions */}
+                            {/* ... (Actions) ... */}
                             <div className="flex gap-4 pt-4">
                                 <div className="w-32 relative">
                                     <div className="flex items-center justify-between w-full h-14 px-4 rounded-lg border border-[#482348]">

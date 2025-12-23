@@ -326,8 +326,8 @@ const AdminUsers = () => {
                                         onChange={(e) => setTempRole(e.target.value)}
                                         className="flex-1 bg-[#16162a] border border-white/10 rounded-lg px-4 py-2 text-sm outline-none focus:border-[#d411d4] transition-colors"
                                     >
-                                        <option value="customer">Customer</option>
-                                        <option value="manager">Manager</option>
+                                        <option value="customer" className="bg-[#1a1a2e]">Customer</option>
+                                        <option value="manager" className="bg-[#1a1a2e]">Manager</option>
                                     </select>
                                     {tempRole && tempRole !== selectedUser.role && (
                                         <button
@@ -439,8 +439,8 @@ const AdminUsers = () => {
                                     onChange={(e) => setNewUser(prev => ({ ...prev, role: e.target.value }))}
                                     className="w-full px-4 py-3 bg-[#16162a] border border-white/10 rounded-lg text-white focus:outline-none focus:border-[#d411d4] transition-colors"
                                 >
-                                    <option value="customer">Customer</option>
-                                    <option value="manager">Manager</option>
+                                    <option value="customer" className="bg-[#1a1a2e]">Customer</option>
+                                    <option value="manager" className="bg-[#1a1a2e]">Manager</option>
                                 </select>
                             </div>
 

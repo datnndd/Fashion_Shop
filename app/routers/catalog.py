@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+import json
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -270,6 +271,10 @@ async def get_product(
     
     product = dict(product)
     
+    # Sanitize images
+    if isinstance(product.get("images"), dict):
+        product["images"] = []
+    
     # Get variants
     var_result = await session.execute(
         text("SELECT * FROM product_variants WHERE product_id = :product_id"),
@@ -307,26 +312,104 @@ async def update_product(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
 
     # Build dynamic update
-    update_data = payload.model_dump(exclude_unset=True)
-    if not update_data:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No fields to update")
+    update_data = payload.model_dump(exclude_unset=True, exclude={"variants"})
     
-    update_data["updated_at"] = "NOW()"
-    set_parts = []
-    params = {"product_id": product_id}
-    for key, value in update_data.items():
-        if key == "updated_at":
-            set_parts.append("updated_at = NOW()")
-        else:
-            set_parts.append(f"{key} = :{key}")
-            params[key] = value
+    # Serialize JSON fields for asyncpg
+    for k, v in update_data.items():
+        if k in ["images", "attributes"] and isinstance(v, (list, dict)):
+            update_data[k] = json.dumps(v)
     
+    if update_data:
+        update_data["updated_at"] = "NOW()"
+        set_parts = []
+        params = {"product_id": product_id}
+        for key, value in update_data.items():
+            if key == "updated_at":
+                set_parts.append("updated_at = NOW()")
+            else:
+                set_parts.append(f"{key} = :{key}")
+                params[key] = value
+        
+        await session.execute(
+            text(f"UPDATE products SET {', '.join(set_parts)} WHERE product_id = :product_id"),
+            params
+        )
+
+    # Handle variants update
+    if payload.variants is not None:
+        # Get existing variants
+        var_result = await session.execute(
+            text("SELECT variant_id, sku FROM product_variants WHERE product_id = :product_id"),
+            {"product_id": product_id}
+        )
+        existing_ids = {row.variant_id for row in var_result}
+        
+        touched_ids = set()
+        
+        for v_data in payload.variants:
+            v_dict = v_data.model_dump(exclude_unset=True)
+            
+            # Serialize JSON fields for asyncpg
+            for k in ["images", "attributes"]:
+                if k in v_dict and isinstance(v_dict[k], (list, dict)):
+                    v_dict[k] = json.dumps(v_dict[k])
+            
+            v_id = v_dict.pop("variant_id", None)
+            
+            if v_id and v_id in existing_ids:
+                # Update existing
+                touched_ids.add(v_id)
+                if v_dict:
+                    set_clause = ", ".join(f"{k} = :{k}" for k in v_dict.keys())
+                    v_dict["variant_id"] = v_id
+                    await session.execute(
+                        text(f"UPDATE product_variants SET {set_clause} WHERE variant_id = :variant_id"),
+                        v_dict
+                    )
+            else:
+                # Create new
+                v_dict["product_id"] = product_id
+                cols = list(v_dict.keys())
+                vals = ", ".join(f":{k}" for k in cols)
+                col_str = ", ".join(cols)
+                
+                try:
+                    create_res = await session.execute(
+                        text(f"INSERT INTO product_variants ({col_str}) VALUES ({vals}) RETURNING variant_id"),
+                        v_dict
+                    )
+                    new_id = create_res.scalar()
+                    touched_ids.add(new_id)
+                except Exception as e:
+                    # Likely missing fields for creation (e.g. price/sku)
+                    print(f"Error creating variant: {e}")
+                    raise HTTPException(status_code=400, detail=f"Error creating variant: {str(e)}")
+
+        # Delete removed variants
+        to_delete = existing_ids - touched_ids
+        if to_delete:
+            # Check for order dependencies if needed, or catch error
+            try:
+                await session.execute(
+                    text("DELETE FROM product_variants WHERE variant_id = ANY(:ids)"),
+                    {"ids": list(to_delete)}
+                )
+            except Exception as e:
+                # Fallback to soft delete if hard delete fails (e.g. FK constraint)
+                print(f"Could not hard delete variants {to_delete}, soft deleting instead. Error: {e}")
+                await session.execute(
+                    text("UPDATE product_variants SET is_active = FALSE WHERE variant_id = ANY(:ids)"),
+                    {"ids": list(to_delete)}
+                )
+
+    await session.commit()
+    
+    # Return updated product
     result = await session.execute(
-        text(f"UPDATE products SET {', '.join(set_parts)} WHERE product_id = :product_id RETURNING *"),
-        params
+        text("SELECT * FROM products WHERE product_id = :product_id"),
+        {"product_id": product_id}
     )
     product = dict(result.mappings().one())
-    await session.commit()
     
     # Get variants
     var_result = await session.execute(
@@ -375,7 +458,7 @@ async def list_products(
     category_id: int | None = Query(default=None),
     is_new: bool | None = Query(default=None),
     is_sale: bool | None = Query(default=None),
-    is_published: bool | None = Query(default=True),
+    is_published: str | None = Query(default="true", description="Filter by published status: 'true', 'false', or 'all'"),
     sort_by: str | None = Query(default=None, description="Sort field: 'price_asc', 'price_desc', 'newest', 'best_selling'"),
     limit: int = Query(default=20, le=100),
     offset: int = Query(default=0),
@@ -400,8 +483,20 @@ async def list_products(
         conditions.append("base_price <= :max_price")
         params["max_price"] = max_price
     if category_id is not None:
-        conditions.append("category_id = :category_id")
-        params["category_id"] = category_id
+        # Get category and direct subcategories (2-level support)
+        # Note: For deeper hierarchies, a recursive query (CTE) would be needed.
+        cat_ids_result = await session.execute(
+            text("SELECT category_id FROM categories WHERE category_id = :cid OR parent_id = :cid"),
+            {"cid": category_id}
+        )
+        category_ids = [row.category_id for row in cat_ids_result]
+        
+        if category_ids:
+            conditions.append("category_id = ANY(:category_ids)")
+            params["category_ids"] = category_ids
+        else:
+            # If category doesn't exist, ensure no results
+            conditions.append("1 = 0")
     if is_new is not None:
         conditions.append("is_new = :is_new")
         params["is_new"] = is_new
@@ -410,9 +505,11 @@ async def list_products(
             conditions.append("discount_percent > 0")
         else:
             conditions.append("discount_percent = 0")
-    if is_published is not None:
+    if is_published is not None and is_published.lower() != "all":
+        # Parse boolean
+        is_pub_bool = is_published.lower() == "true"
         conditions.append("is_published = :is_published")
-        params["is_published"] = is_published
+        params["is_published"] = is_pub_bool
     
     where_clause = " WHERE " + " AND ".join(conditions) if conditions else ""
     
@@ -445,6 +542,9 @@ async def list_products(
     
     # Get variants for each product
     for product in products:
+        # Sanitize images
+        if isinstance(product.get("images"), dict):
+            product["images"] = []
         var_result = await session.execute(
             text("SELECT * FROM product_variants WHERE product_id = :product_id"),
             {"product_id": product["product_id"]}

@@ -23,6 +23,7 @@ const AdminProducts = () => {
         base_price: '',
         description: '',
         thumbnail: '',
+        images: [], // Product gallery
         is_new: false,
         discount_percent: 0,
         badge: '',
@@ -39,13 +40,14 @@ const AdminProducts = () => {
         try {
             setLoading(true);
             const [productsData, categoriesData] = await Promise.all([
-                productsAPI.list({ limit: 100 }),
+                productsAPI.list({ limit: 100, isPublished: 'all' }),
                 categoriesAPI.list()
             ]);
             setProducts(productsData);
             setCategories(categoriesData);
         } catch (error) {
             console.error('Failed to fetch products:', error);
+            setError('Failed to load products');
         } finally {
             setLoading(false);
         }
@@ -77,6 +79,7 @@ const AdminProducts = () => {
 
         // Transform variants from API format to form format
         const formattedVariants = (product.variants || []).map(v => ({
+            id: v.variant_id, // Keep ID for updates
             sku: v.sku || '',
             size: v.attributes?.size || '',
             color: v.attributes?.color || '',
@@ -92,6 +95,7 @@ const AdminProducts = () => {
             base_price: product.base_price || '',
             description: product.description || '',
             thumbnail: product.thumbnail || '',
+            images: product.images || [],
             is_new: product.is_new || false,
             discount_percent: product.discount_percent || 0,
             badge: product.badge || '',
@@ -111,12 +115,13 @@ const AdminProducts = () => {
             base_price: '',
             description: '',
             thumbnail: '',
+            images: [],
             is_new: false,
             discount_percent: 0,
             badge: '',
             is_published: true,
             variants: [
-                { sku: '', size: '', color: '', price: '', stock: 0, images: [''] }
+                { sku: '', size: '', color: '', price: '', stock: 0, images: [] }
             ]
         });
         setShowModal(true);
@@ -139,7 +144,7 @@ const AdminProducts = () => {
             ...prev,
             variants: [
                 ...prev.variants,
-                { sku: '', size: '', color: '', price: '', stock: 0, images: [''] }
+                { sku: '', size: '', color: '', price: '', stock: 0, images: [] }
             ]
         }));
     };
@@ -160,23 +165,19 @@ const AdminProducts = () => {
         }));
     };
 
-    // Handle file upload for variant images
-    const handleImageUpload = async (variantIndex, files) => {
-        if (!files || files.length === 0) return;
+    // Handle single file upload for variant (Max 1 image)
+    const handleVariantImageUpload = async (variantIndex, file) => {
+        if (!file) return;
 
         setUploading(prev => ({ ...prev, [variantIndex]: true }));
-
         try {
-            const result = await uploadAPI.uploadImages(Array.from(files));
-            const uploadedUrls = result.urls;
-
-            // Add uploaded URLs to variant images
+            const result = await uploadAPI.uploadImage(file);
             setFormData(prev => {
                 const newVariants = [...prev.variants];
-                const currentImages = newVariants[variantIndex].images?.filter(img => img.trim()) || [];
+                // Replace images array with single new image
                 newVariants[variantIndex] = {
                     ...newVariants[variantIndex],
-                    images: [...currentImages, ...uploadedUrls]
+                    images: [result.url]
                 };
                 return { ...prev, variants: newVariants };
             });
@@ -188,14 +189,13 @@ const AdminProducts = () => {
         }
     };
 
-    // Remove an image from variant
-    const removeImage = (variantIndex, imageIndex) => {
+    // Remove variant image
+    const removeVariantImage = (variantIndex) => {
         setFormData(prev => {
             const newVariants = [...prev.variants];
-            const newImages = newVariants[variantIndex].images.filter((_, i) => i !== imageIndex);
             newVariants[variantIndex] = {
                 ...newVariants[variantIndex],
-                images: newImages
+                images: []
             };
             return { ...prev, variants: newVariants };
         });
@@ -227,6 +227,35 @@ const AdminProducts = () => {
         setFormData(prev => ({ ...prev, thumbnail: '' }));
     };
 
+    // Gallery upload handler (Multiple images)
+    const [galleryUploading, setGalleryUploading] = useState(false);
+
+    const handleGalleryUpload = async (e) => {
+        const files = Array.from(e.target.files);
+        if (files.length === 0) return;
+
+        setGalleryUploading(true);
+        try {
+            const result = await uploadAPI.uploadImages(files);
+            setFormData(prev => ({
+                ...prev,
+                images: [...prev.images, ...result.urls]
+            }));
+        } catch (err) {
+            console.error('Gallery upload failed:', err);
+            setError(`Gallery upload failed: ${err.message}`);
+        } finally {
+            setGalleryUploading(false);
+        }
+    };
+
+    const removeGalleryImage = (index) => {
+        setFormData(prev => ({
+            ...prev,
+            images: prev.images.filter((_, i) => i !== index)
+        }));
+    };
+
     const generateSku = (index) => {
         const variant = formData.variants[index];
         const productSlug = formData.slug || generateSlug(formData.name);
@@ -251,12 +280,13 @@ const AdminProducts = () => {
             const variants = formData.variants
                 .filter(v => v.sku || v.size || v.color) // Only include non-empty variants
                 .map(v => ({
+                    variant_id: v.id || null, // Include ID if present
                     sku: v.sku || generateSku(formData.variants.indexOf(v)),
                     attributes: {
                         size: v.size || null,
                         color: v.color || null
                     },
-                    price: parseFloat(v.price) || parseFloat(formData.base_price),
+                    price: parseFloat(v.price) || 0,
                     stock: parseInt(v.stock) || 0,
                     images: v.images?.filter(img => img.trim()) || null,
                     is_active: true
@@ -272,7 +302,7 @@ const AdminProducts = () => {
                 is_new: formData.is_new,
                 discount_percent: parseInt(formData.discount_percent) || 0,
                 badge: formData.badge || null,
-                images: null,
+                images: formData.images, // Use form data images which is array of strings
                 is_published: formData.is_published,
                 variants: variants
             };
@@ -357,16 +387,16 @@ const AdminProducts = () => {
                         />
                     </div>
                     <select className="bg-white/5 rounded-lg px-4 py-2 text-sm border-none outline-none cursor-pointer">
-                        <option value="">All Categories</option>
+                        <option value="" className="bg-[#1a1a2e]">All Categories</option>
                         {categories.map(cat => (
-                            <option key={cat.category_id} value={cat.category_id}>{cat.name}</option>
+                            <option key={cat.category_id} value={cat.category_id} className="bg-[#1a1a2e]">{cat.name}</option>
                         ))}
                     </select>
                     <select className="bg-white/5 rounded-lg px-4 py-2 text-sm border-none outline-none cursor-pointer">
-                        <option value="">All Status</option>
-                        <option value="active">Active</option>
-                        <option value="out-of-stock">Out of Stock</option>
-                        <option value="draft">Draft</option>
+                        <option value="" className="bg-[#1a1a2e]">All Status</option>
+                        <option value="active" className="bg-[#1a1a2e]">Active</option>
+                        <option value="out-of-stock" className="bg-[#1a1a2e]">Out of Stock</option>
+                        <option value="draft" className="bg-[#1a1a2e]">Draft</option>
                     </select>
                 </div>
             </div>
@@ -505,9 +535,9 @@ const AdminProducts = () => {
                                         onChange={handleInputChange}
                                         className="w-full bg-white/5 rounded-lg px-4 py-3 text-sm border border-white/10 focus:border-[#d411d4] outline-none"
                                     >
-                                        <option value="">Select category</option>
+                                        <option value="" className="bg-[#1a1a2e]">Select category</option>
                                         {categories.map(cat => (
-                                            <option key={cat.category_id} value={cat.category_id}>{cat.name}</option>
+                                            <option key={cat.category_id} value={cat.category_id} className="bg-[#1a1a2e]">{cat.name}</option>
                                         ))}
                                     </select>
                                 </div>
@@ -603,6 +633,43 @@ const AdminProducts = () => {
                                     </div>
                                 </div>
 
+                                <div className="mt-4 border-t border-white/5 pt-4">
+                                    <label className="block text-sm font-medium mb-2">Product Gallery (Multiple Images)</label>
+                                    <div className="flex flex-wrap gap-3">
+                                        {/* Existing Gallery Images */}
+                                        {formData.images && formData.images.map((imgUrl, idx) => (
+                                            <div key={idx} className="relative w-24 h-24 group">
+                                                <img
+                                                    src={imgUrl.startsWith('http') ? imgUrl : `${API_BASE}${imgUrl}`}
+                                                    alt={`Gallery ${idx}`}
+                                                    className="w-full h-full object-cover rounded-lg border border-white/10"
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeGalleryImage(idx)}
+                                                    className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                                                >
+                                                    ×
+                                                </button>
+                                            </div>
+                                        ))}
+
+                                        {/* Upload Button */}
+                                        <label className="flex flex-col items-center justify-center w-24 h-24 border-2 border-dashed border-white/20 rounded-lg cursor-pointer hover:bg-white/5 transition-colors">
+                                            <span className="material-symbols-outlined text-2xl text-gray-400">add_photo_alternate</span>
+                                            <span className="text-[10px] text-gray-500 mt-1">{galleryUploading ? '...' : 'Add'}</span>
+                                            <input
+                                                type="file"
+                                                className="hidden"
+                                                multiple
+                                                accept="image/*"
+                                                onChange={handleGalleryUpload}
+                                                disabled={galleryUploading}
+                                            />
+                                        </label>
+                                    </div>
+                                </div>
+
                                 <div className="flex flex-wrap gap-4">
                                     <label className="flex items-center gap-2 cursor-pointer">
                                         <input
@@ -676,12 +743,12 @@ const AdminProducts = () => {
                                                     </div>
                                                     <div className="grid grid-cols-2 gap-3">
                                                         <div>
-                                                            <label className="block text-xs text-gray-400 mb-2 font-medium">Price</label>
+                                                            <label className="block text-xs text-gray-400 mb-2 font-medium">Extra Price (+)</label>
                                                             <input
                                                                 type="number"
                                                                 value={variant.price}
                                                                 onChange={(e) => handleVariantChange(index, 'price', e.target.value)}
-                                                                placeholder={formData.base_price || '0'}
+                                                                placeholder="0"
                                                                 className="w-full bg-[#0f0f1a] rounded-lg px-4 py-2.5 text-sm border border-white/10 focus:border-[#d411d4] outline-none"
                                                             />
                                                         </div>
@@ -709,8 +776,8 @@ const AdminProducts = () => {
                                                                 type="button"
                                                                 onClick={() => handleVariantChange(index, 'size', size)}
                                                                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${variant.size === size
-                                                                        ? 'bg-[#d411d4] text-white'
-                                                                        : 'bg-[#0f0f1a] text-gray-400 hover:bg-white/10 hover:text-white border border-white/10'
+                                                                    ? 'bg-[#d411d4] text-white'
+                                                                    : 'bg-[#0f0f1a] text-gray-400 hover:bg-white/10 hover:text-white border border-white/10'
                                                                     }`}
                                                             >
                                                                 {size}
@@ -739,8 +806,8 @@ const AdminProducts = () => {
                                                                 type="button"
                                                                 onClick={() => handleVariantChange(index, 'color', color.hex)}
                                                                 className={`w-8 h-8 rounded-full border-2 transition-all ${variant.color === color.hex
-                                                                        ? 'border-[#d411d4] scale-110 ring-2 ring-[#d411d4]/50'
-                                                                        : 'border-white/20 hover:border-white/40'
+                                                                    ? 'border-[#d411d4] scale-110 ring-2 ring-[#d411d4]/50'
+                                                                    : 'border-white/20 hover:border-white/40'
                                                                     }`}
                                                                 style={{ backgroundColor: color.hex }}
                                                                 title={color.name}
@@ -765,49 +832,41 @@ const AdminProducts = () => {
                                                         </div>
                                                     </div>
                                                 </div>
-                                                {/* Variant Images */}
+                                                {/* Variant Images - Single Image Mode */}
                                                 <div className="col-span-2 md:col-span-5 mt-3 pt-3 border-t border-white/10">
-                                                    <label className="block text-xs text-gray-500 mb-2">Ảnh variant</label>
+                                                    <label className="block text-xs text-gray-500 mb-2">Variant Image (Single)</label>
 
-                                                    {/* Image previews */}
-                                                    {variant.images && variant.images.filter(img => img).length > 0 && (
-                                                        <div className="flex flex-wrap gap-2 mb-3">
-                                                            {variant.images.filter(img => img).map((imgUrl, imgIndex) => (
-                                                                <div key={imgIndex} className="relative group">
-                                                                    <img
-                                                                        src={imgUrl.startsWith('/') ? `${API_BASE}${imgUrl}` : imgUrl}
-                                                                        alt={`Variant ${index + 1} - Image ${imgIndex + 1}`}
-                                                                        className="w-16 h-16 object-cover rounded-lg border border-white/10"
-                                                                    />
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={() => removeImage(index, imgIndex)}
-                                                                        className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity"
-                                                                    >
-                                                                        ×
-                                                                    </button>
-                                                                </div>
-                                                            ))}
+                                                    {variant.images && variant.images.length > 0 && variant.images[0] ? (
+                                                        <div className="relative w-16 h-16 group">
+                                                            <img
+                                                                src={variant.images[0].startsWith('http') ? variant.images[0] : `${API_BASE}${variant.images[0]}`}
+                                                                alt={`Variant ${index + 1}`}
+                                                                className="w-full h-full object-cover rounded-lg border border-white/10"
+                                                            />
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => removeVariantImage(index)}
+                                                                className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                                                            >
+                                                                ×
+                                                            </button>
                                                         </div>
-                                                    )}
-
-                                                    {/* Upload button */}
-                                                    <div className="flex gap-2">
-                                                        <label className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-white/5 hover:bg-white/10 border border-dashed border-white/20 rounded-lg cursor-pointer transition-colors">
+                                                    ) : (
+                                                        <label className="flex items-center justify-center gap-2 p-3 bg-white/5 hover:bg-white/10 border border-dashed border-white/20 rounded-lg cursor-pointer transition-colors max-w-xs">
                                                             <span className="material-symbols-outlined text-gray-400">cloud_upload</span>
-                                                            <span className="text-sm text-gray-400">
-                                                                {uploading[index] ? 'Đang upload...' : 'Chọn ảnh để upload'}
-                                                            </span>
+                                                            <div className="text-left">
+                                                                <p className="text-xs text-gray-300">Upload Image</p>
+                                                                <p className="text-[10px] text-gray-500">{uploading[index] ? 'Uploading...' : 'One image allowed'}</p>
+                                                            </div>
                                                             <input
                                                                 type="file"
-                                                                multiple
-                                                                accept="image/*"
-                                                                onChange={(e) => handleImageUpload(index, e.target.files)}
-                                                                disabled={uploading[index]}
                                                                 className="hidden"
+                                                                accept="image/*"
+                                                                onChange={(e) => handleVariantImageUpload(index, e.target.files[0])}
+                                                                disabled={uploading[index]}
                                                             />
                                                         </label>
-                                                    </div>
+                                                    )}
                                                 </div>
                                             </div>
                                         ))}

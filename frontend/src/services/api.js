@@ -48,9 +48,6 @@ async function fetchAPI(endpoint, options = {}) {
 
 // Products API
 export const productsAPI = {
-    /**
-     * Get all products with optional filters
-     */
     list: (params = {}) => {
         const searchParams = new URLSearchParams();
         if (params.categoryId) searchParams.append('category_id', params.categoryId);
@@ -62,6 +59,7 @@ export const productsAPI = {
         if (params.maxPrice) searchParams.append('max_price', params.maxPrice);
         if (params.isNew !== undefined) searchParams.append('is_new', params.isNew);
         if (params.isSale !== undefined) searchParams.append('is_sale', params.isSale);
+        if (params.isPublished !== undefined) searchParams.append('is_published', params.isPublished);
         if (params.sortBy) searchParams.append('sort_by', params.sortBy);
         if (params.limit) searchParams.append('limit', params.limit);
         if (params.offset) searchParams.append('offset', params.offset);
@@ -69,15 +67,7 @@ export const productsAPI = {
         const queryString = searchParams.toString();
         return fetchAPI(`/catalog/products${queryString ? `?${queryString}` : ''}`);
     },
-
-    /**
-     * Get a single product by ID
-     */
     get: (productId) => fetchAPI(`/catalog/products/${productId}`),
-
-    /**
-     * Create a new product (admin only)
-     */
     create: (data) => {
         const token = localStorage.getItem('token');
         return fetchAPI('/catalog/products', {
@@ -86,10 +76,6 @@ export const productsAPI = {
             headers: token ? { Authorization: `Bearer ${token}` } : {}
         });
     },
-
-    /**
-     * Update a product (admin only)
-     */
     update: (productId, data) => {
         const token = localStorage.getItem('token');
         return fetchAPI(`/catalog/products/${productId}`, {
@@ -98,10 +84,6 @@ export const productsAPI = {
             headers: token ? { Authorization: `Bearer ${token}` } : {}
         });
     },
-
-    /**
-     * Delete a product (admin only)
-     */
     delete: (productId) => {
         const token = localStorage.getItem('token');
         return fetchAPI(`/catalog/products/${productId}`, {
@@ -109,33 +91,16 @@ export const productsAPI = {
             headers: token ? { Authorization: `Bearer ${token}` } : {}
         });
     },
-
-    /**
-     * Get product variants
-     */
     getVariants: (productId) => fetchAPI(`/catalog/products/${productId}/variants`),
 };
 
-
-
 // Categories API
 export const categoriesAPI = {
-    /**
-     * Get all categories
-     */
     list: (isActive = null) => {
         const params = isActive !== null ? `?is_active=${isActive}` : '';
         return fetchAPI(`/catalog/categories${params}`);
     },
-
-    /**
-     * Get a single category
-     */
     get: (categoryId) => fetchAPI(`/catalog/categories/${categoryId}`),
-
-    /**
-     * Create a new category (admin only)
-     */
     create: (data) => {
         const token = localStorage.getItem('token');
         return fetchAPI('/catalog/categories', {
@@ -144,10 +109,6 @@ export const categoriesAPI = {
             headers: token ? { Authorization: `Bearer ${token}` } : {}
         });
     },
-
-    /**
-     * Update a category (admin only)
-     */
     update: (categoryId, data) => {
         const token = localStorage.getItem('token');
         return fetchAPI(`/catalog/categories/${categoryId}`, {
@@ -156,10 +117,6 @@ export const categoriesAPI = {
             headers: token ? { Authorization: `Bearer ${token}` } : {}
         });
     },
-
-    /**
-     * Delete a category (admin only)
-     */
     delete: (categoryId) => {
         const token = localStorage.getItem('token');
         return fetchAPI(`/catalog/categories/${categoryId}`, {
@@ -169,11 +126,48 @@ export const categoriesAPI = {
     },
 };
 
+// Marketing API (Discounts)
+export const marketingAPI = {
+    list: (isActive = null) => {
+        const token = localStorage.getItem('token');
+        const params = isActive !== null ? `?is_active=${isActive}` : '';
+        return fetchAPI(`/marketing/discounts${params}`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+    },
+    get: (discountId) => {
+        const token = localStorage.getItem('token');
+        return fetchAPI(`/marketing/discounts/${discountId}`, {
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+    },
+    create: (data) => {
+        const token = localStorage.getItem('token');
+        return fetchAPI('/marketing/discounts', {
+            method: 'POST',
+            body: JSON.stringify(data),
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+    },
+    update: (discountId, data) => {
+        const token = localStorage.getItem('token');
+        return fetchAPI(`/marketing/discounts/${discountId}`, {
+            method: 'PUT',
+            body: JSON.stringify(data),
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+    },
+    delete: (discountId) => {
+        const token = localStorage.getItem('token');
+        return fetchAPI(`/marketing/discounts/${discountId}`, {
+            method: 'DELETE',
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+    },
+};
+
 // Reviews API
 export const reviewsAPI = {
-    /**
-     * Get reviews for a product
-     */
     list: (productId, params = {}) => {
         const searchParams = new URLSearchParams();
         if (params.limit) searchParams.append('limit', params.limit);
@@ -182,30 +176,14 @@ export const reviewsAPI = {
         const queryString = searchParams.toString();
         return fetchAPI(`/reviews/products/${productId}${queryString ? `?${queryString}` : ''}`);
     },
-
-    /**
-     * Get all reviews (for admin)
-     */
     listAll: () => {
         const token = localStorage.getItem('token');
         return fetchAPI('/reviews', {
             headers: token ? { Authorization: `Bearer ${token}` } : {}
         });
     },
-
-    /**
-     * Get review summary for a product
-     */
     getSummary: (productId) => fetchAPI(`/reviews/products/${productId}/summary`),
-
-    /**
-     * Mark a review as helpful
-     */
     markHelpful: (reviewId) => fetchAPI(`/reviews/${reviewId}/helpful`, { method: 'POST' }),
-
-    /**
-     * Approve a review
-     */
     approve: (reviewId) => {
         const token = localStorage.getItem('token');
         return fetchAPI(`/reviews/${reviewId}/approve`, {
@@ -213,10 +191,6 @@ export const reviewsAPI = {
             headers: token ? { Authorization: `Bearer ${token}` } : {}
         });
     },
-
-    /**
-     * Reject a review
-     */
     reject: (reviewId) => {
         const token = localStorage.getItem('token');
         return fetchAPI(`/reviews/${reviewId}/reject`, {
@@ -226,11 +200,8 @@ export const reviewsAPI = {
     },
 };
 
-// Users API (for admin)
+// Users API
 export const usersAPI = {
-    /**
-     * Get all users
-     */
     list: (params = {}) => {
         const searchParams = new URLSearchParams();
         if (params.limit) searchParams.append('limit', params.limit);
@@ -242,10 +213,6 @@ export const usersAPI = {
             headers: token ? { Authorization: `Bearer ${token}` } : {}
         });
     },
-
-    /**
-     * Create a new user (admin only)
-     */
     create: (userData) => {
         const token = localStorage.getItem('token');
         return fetchAPI('/users/admin', {
@@ -254,20 +221,12 @@ export const usersAPI = {
             headers: token ? { Authorization: `Bearer ${token}` } : {}
         });
     },
-
-    /**
-     * Get a single user
-     */
     get: (userId) => {
         const token = localStorage.getItem('token');
         return fetchAPI(`/users/${userId}`, {
             headers: token ? { Authorization: `Bearer ${token}` } : {}
         });
     },
-
-    /**
-     * Update user role
-     */
     updateRole: (userId, role) => {
         const token = localStorage.getItem('token');
         return fetchAPI(`/users/${userId}/role`, {
@@ -280,36 +239,20 @@ export const usersAPI = {
 
 // Auth API
 export const authAPI = {
-    /**
-     * Login user
-     */
     login: (email, password) => {
         const formData = new FormData();
-        formData.append('username', email); // backend uses OAuth2PasswordRequestForm which expects 'username'
+        formData.append('username', email);
         formData.append('password', password);
         return fetchAPI('/auth/login', {
             method: 'POST',
             body: formData,
-            // Don't set Content-Type header, let browser set it with boundary for FormData
             headers: {}
         });
     },
-
-    /**
-     * Register user
-     */
     register: (userData) => fetchAPI('/users', { method: 'POST', body: JSON.stringify(userData) }),
-
-    /**
-     * Get current user
-     */
     me: (token) => fetchAPI('/users/me', {
         headers: { Authorization: `Bearer ${token}` }
     }),
-
-    /**
-     * Update current user's profile
-     */
     updateProfile: (data) => {
         const token = localStorage.getItem('token');
         return fetchAPI('/users/me', {
@@ -318,10 +261,6 @@ export const authAPI = {
             headers: token ? { Authorization: `Bearer ${token}` } : {}
         });
     },
-
-    /**
-     * Change current user's password
-     */
     changePassword: (currentPassword, newPassword) => {
         const token = localStorage.getItem('token');
         return fetchAPI('/users/me/change-password', {
@@ -330,10 +269,6 @@ export const authAPI = {
             headers: token ? { Authorization: `Bearer ${token}` } : {}
         });
     },
-
-    /**
-     * Get current user's orders
-     */
     getMyOrders: () => {
         const token = localStorage.getItem('token');
         return fetchAPI('/users/me/orders', {
@@ -342,7 +277,7 @@ export const authAPI = {
     },
 };
 
-// Cart API (current user)
+// Cart API
 export const cartAPI = {
     getMyCart: () => {
         const token = localStorage.getItem('token');
@@ -375,21 +310,14 @@ export const cartAPI = {
     },
 };
 
-// Addresses API (for current user)
+// Addresses API
 export const addressesAPI = {
-    /**
-     * Get current user's addresses
-     */
     list: () => {
         const token = localStorage.getItem('token');
         return fetchAPI('/locations/me/addresses', {
             headers: token ? { Authorization: `Bearer ${token}` } : {}
         });
     },
-
-    /**
-     * Create a new address
-     */
     create: (data) => {
         const token = localStorage.getItem('token');
         return fetchAPI('/locations/me/addresses', {
@@ -398,10 +326,6 @@ export const addressesAPI = {
             headers: token ? { Authorization: `Bearer ${token}` } : {}
         });
     },
-
-    /**
-     * Update an address
-     */
     update: (addressId, data) => {
         const token = localStorage.getItem('token');
         return fetchAPI(`/locations/me/addresses/${addressId}`, {
@@ -410,10 +334,6 @@ export const addressesAPI = {
             headers: token ? { Authorization: `Bearer ${token}` } : {}
         });
     },
-
-    /**
-     * Delete an address
-     */
     delete: (addressId) => {
         const token = localStorage.getItem('token');
         return fetchAPI(`/locations/me/addresses/${addressId}`, {
@@ -423,20 +343,13 @@ export const addressesAPI = {
     },
 };
 
-// Locations API (provinces and wards)
+// Locations API
 export const locationsAPI = {
-    /**
-     * Get all provinces
-     */
     getProvinces: () => fetchAPI('/locations/provinces'),
-
-    /**
-     * Get wards by province
-     */
     getWards: (provinceId) => fetchAPI(`/locations/provinces/${provinceId}/wards`),
 };
 
-// Orders API (for admin)
+// Orders API
 export const ordersAPI = {
     list: (params = {}) => {
         const searchParams = new URLSearchParams();
@@ -467,22 +380,12 @@ export const ordersAPI = {
 
 // Admin Stats API
 export const adminAPI = {
-    /**
-     * Get dashboard stats
-     */
     getStats: () => fetchAPI('/admin/stats'),
-
-    /**
-     * Get recent orders
-     */
     getRecentOrders: (limit = 5) => fetchAPI(`/admin/orders/recent?limit=${limit}`),
 };
 
 // Dashboard API
 export const dashboardAPI = {
-    /**
-     * Get dashboard statistics
-     */
     getStats: (period = 'day', startDate = null, endDate = null) => {
         const token = localStorage.getItem('token');
         const params = new URLSearchParams({ period });
@@ -492,10 +395,6 @@ export const dashboardAPI = {
             headers: token ? { Authorization: `Bearer ${token}` } : {}
         });
     },
-
-    /**
-     * Export to Excel
-     */
     exportExcel: async (period = 'day', startDate = null, endDate = null) => {
         const token = localStorage.getItem('token');
         const params = new URLSearchParams({ period });
@@ -514,10 +413,6 @@ export const dashboardAPI = {
         a.click();
         a.remove();
     },
-
-    /**
-     * Export to PDF
-     */
     exportPdf: async (period = 'day', startDate = null, endDate = null) => {
         const token = localStorage.getItem('token');
         const params = new URLSearchParams({ period });
@@ -538,26 +433,8 @@ export const dashboardAPI = {
     }
 };
 
-// Export a default API object for convenience
-const api = {
-    products: productsAPI,
-    categories: categoriesAPI,
-    reviews: reviewsAPI,
-    users: usersAPI,
-    cart: cartAPI,
-    orders: ordersAPI,
-    auth: authAPI,
-    admin: adminAPI,
-    dashboard: dashboardAPI,
-    addresses: addressesAPI,
-    locations: locationsAPI,
-};
-
 // Upload API
 export const uploadAPI = {
-    /**
-     * Upload multiple images
-     */
     uploadImages: (files) => {
         const formData = new FormData();
         files.forEach(file => formData.append('files', file));
@@ -567,10 +444,6 @@ export const uploadAPI = {
             headers: {}
         });
     },
-
-    /**
-     * Upload single image
-     */
     uploadImage: (file) => {
         const formData = new FormData();
         formData.append('file', file);
@@ -580,7 +453,23 @@ export const uploadAPI = {
             headers: {}
         });
     },
-}
+};
+
+// Export a default API object for convenience
+const api = {
+    products: productsAPI,
+    categories: categoriesAPI,
+    marketing: marketingAPI,
+    reviews: reviewsAPI,
+    users: usersAPI,
+    cart: cartAPI,
+    orders: ordersAPI,
+    auth: authAPI,
+    admin: adminAPI,
+    dashboard: dashboardAPI,
+    addresses: addressesAPI,
+    locations: locationsAPI,
+    upload: uploadAPI,
+};
 
 export default api;
-
