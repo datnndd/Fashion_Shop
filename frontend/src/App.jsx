@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import Header from './components/layout/Header';
 import Footer from './components/layout/Footer';
 import ChatBox from './components/ChatBox';
@@ -32,6 +32,8 @@ import { CartProvider } from './context/CartContext';
 
 const AppContent = () => {
   const { theme } = useTheme();
+  const location = useLocation();
+  const isAdminPage = location.pathname.startsWith('/admin');
 
   return (
     <div
@@ -49,7 +51,7 @@ const AppContent = () => {
                     color: white;
                 }
             `}</style>
-      <ChatBox />
+      {!isAdminPage && <ChatBox />}
       <Routes>
         {/* Pages with Header/Footer */}
         <Route
