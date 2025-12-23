@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { formatPriceVND } from '../../utils/currency';
 import { productsAPI, categoriesAPI, uploadAPI } from '../../services/api';
 
+const SIZE_OPTIONS = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 const AdminProducts = () => {
@@ -16,6 +17,7 @@ const AdminProducts = () => {
     const [error, setError] = useState('');
     const [categorySearch, setCategorySearch] = useState('');
     const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
+    const [bulkSizeSelection, setBulkSizeSelection] = useState([]);
     const categoryDropdownRef = useRef(null);
 
     // Form state
@@ -177,6 +179,57 @@ const AdminProducts = () => {
                 i === index ? { ...v, [field]: value } : v
             )
         }));
+    };
+
+    // Bulk size helpers for faster variant creation
+    const toggleBulkSizeSelection = (size) => {
+        setBulkSizeSelection(prev =>
+            prev.includes(size)
+                ? prev.filter(s => s !== size)
+                : [...prev, size]
+        );
+    };
+
+    const addVariantsForSizes = () => {
+        if (bulkSizeSelection.length === 0) return;
+
+        setFormData(prev => {
+            const template = prev.variants[prev.variants.length - 1];
+            const templateColor = template?.color || '';
+            const templatePrice = template?.price || '';
+            const templateStock = template?.stock ?? 0;
+            const existingCombos = new Set(
+                prev.variants.map(v => `${v.size || ''}|${v.color || ''}`)
+            );
+
+            const variantsToAdd = bulkSizeSelection
+                .map(size => {
+                    const key = `${size}|${templateColor}`;
+                    if (existingCombos.has(key)) return null;
+                    existingCombos.add(key);
+
+                    return {
+                        sku: '',
+                        size,
+                        color: templateColor,
+                        price: templatePrice,
+                        stock: templateStock,
+                        images: []
+                    };
+                })
+                .filter(Boolean);
+
+            if (variantsToAdd.length === 0) {
+                return prev;
+            }
+
+            return {
+                ...prev,
+                variants: [...prev.variants, ...variantsToAdd]
+            };
+        });
+
+        setBulkSizeSelection([]);
     };
 
     // Handle single file upload for variant (Max 1 image)
@@ -386,6 +439,19 @@ const AdminProducts = () => {
         }
     };
 
+    // Toggle product visibility
+    const handleTogglePublish = async (product) => {
+        try {
+            await productsAPI.update(product.product_id, {
+                is_published: !product.is_published
+            });
+            await fetchData();
+        } catch (err) {
+            console.error('Failed to toggle product visibility:', err);
+            setError(err.message || 'Failed to update product');
+        }
+    };
+
     // Filter products by search query
     const filteredProducts = products.filter(p =>
         p.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -480,12 +546,16 @@ const AdminProducts = () => {
                                         <td className="px-6 py-4 font-medium">{formatPriceVND(product.base_price)}</td>
                                         <td className="px-6 py-4 text-gray-400">{variantCount} variants</td>
                                         <td className="px-6 py-4">
-                                            <span className={`px-2 py-1 rounded text-xs font-medium ${status === 'Active'
-                                                ? 'bg-green-500/20 text-green-400'
-                                                : 'bg-yellow-500/20 text-yellow-400'
-                                                }`}>
+                                            <button
+                                                onClick={() => handleTogglePublish(product)}
+                                                className={`px-2 py-1 rounded text-xs font-medium cursor-pointer transition-all hover:scale-105 ${status === 'Active'
+                                                    ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30'
+                                                    : 'bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30'
+                                                    }`}
+                                                title={status === 'Active' ? 'Click to hide product' : 'Click to publish product'}
+                                            >
                                                 {status}
-                                            </span>
+                                            </button>
                                         </td>
                                         <td className="px-6 py-4">
                                             <div className="flex items-center gap-2">
@@ -838,6 +908,41 @@ const AdminProducts = () => {
                                     </button>
                                 </div>
 
+                                <div className="bg-white/5 border border-white/10 rounded-lg p-3">
+                                    <div className="flex flex-wrap items-center justify-between gap-3">
+                                        <div>
+                                            <p className="text-xs font-semibold text-gray-200 uppercase tracking-wider">Add Multiple Sizes</p>
+                                            <p className="text-[11px] text-gray-500 mt-1">Select sizes to create variants at once. Uses the latest variant&apos;s color/price/stock when available.</p>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={addVariantsForSizes}
+                                            disabled={bulkSizeSelection.length === 0}
+                                            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors border ${bulkSizeSelection.length === 0
+                                                ? 'bg-white/5 border-white/10 text-gray-500 cursor-not-allowed'
+                                                : 'bg-[#d411d4] border-[#d411d4] text-white hover:bg-[#b00eb0]'
+                                                }`}
+                                        >
+                                            {bulkSizeSelection.length > 0 ? `Add ${bulkSizeSelection.length} size${bulkSizeSelection.length > 1 ? 's' : ''}` : 'Add sizes'}
+                                        </button>
+                                    </div>
+                                    <div className="flex flex-wrap gap-2 mt-3">
+                                        {SIZE_OPTIONS.map((size) => (
+                                            <button
+                                                key={size}
+                                                type="button"
+                                                onClick={() => toggleBulkSizeSelection(size)}
+                                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all border ${bulkSizeSelection.includes(size)
+                                                    ? 'bg-[#d411d4] border-[#d411d4] text-white shadow-lg shadow-[#d411d4]/30'
+                                                    : 'bg-[#0f0f1a] border-white/10 text-gray-300 hover:bg-white/10 hover:text-white'
+                                                    }`}
+                                            >
+                                                {size}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
                                 {formData.variants.length === 0 ? (
                                     <p className="text-sm text-gray-500 text-center py-4">No variants added. Click "Add Variant" to add size/color options.</p>
                                 ) : (
@@ -895,7 +1000,7 @@ const AdminProducts = () => {
                                                 <div className="mt-4">
                                                     <label className="block text-xs text-gray-400 mb-2 font-medium">Size</label>
                                                     <div className="flex flex-wrap gap-2">
-                                                        {['XS', 'S', 'M', 'L', 'XL', 'XXL'].map((size) => (
+                                                        {SIZE_OPTIONS.map((size) => (
                                                             <button
                                                                 key={size}
                                                                 type="button"

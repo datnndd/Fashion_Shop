@@ -5,6 +5,8 @@ from app.schemas.location import ShippingAddressRead
 from pydantic import Field
 
 class OrderItemRead(BaseModel):
+    order_item_id: int
+    product_id: Optional[int] = None
     product_variant_id: Optional[int] = None
     product_name: str
     quantity: int

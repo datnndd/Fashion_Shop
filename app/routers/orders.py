@@ -40,7 +40,14 @@ async def list_orders(
     # Get items for each order
     for order in orders:
         items_result = await session.execute(
-            text("SELECT * FROM order_items WHERE order_id = :order_id"),
+            text(
+                """
+                SELECT oi.*, pv.product_id
+                FROM order_items oi
+                LEFT JOIN product_variants pv ON oi.product_variant_id = pv.variant_id
+                WHERE oi.order_id = :order_id
+                """
+            ),
             {"order_id": order["order_id"]}
         )
         order["items"] = [dict(item) for item in items_result.mappings().all()]
@@ -83,7 +90,14 @@ async def get_order(
     
     # Get order items
     items_result = await session.execute(
-        text("SELECT * FROM order_items WHERE order_id = :order_id"),
+        text(
+            """
+            SELECT oi.*, pv.product_id
+            FROM order_items oi
+            LEFT JOIN product_variants pv ON oi.product_variant_id = pv.variant_id
+            WHERE oi.order_id = :order_id
+            """
+        ),
         {"order_id": order_id}
     )
     order["items"] = [dict(item) for item in items_result.mappings().all()]
@@ -131,7 +145,14 @@ async def update_order_status(
     
     # Get order items
     items_result = await session.execute(
-        text("SELECT * FROM order_items WHERE order_id = :order_id"),
+        text(
+            """
+            SELECT oi.*, pv.product_id
+            FROM order_items oi
+            LEFT JOIN product_variants pv ON oi.product_variant_id = pv.variant_id
+            WHERE oi.order_id = :order_id
+            """
+        ),
         {"order_id": order_id}
     )
     order["items"] = [dict(item) for item in items_result.mappings().all()]

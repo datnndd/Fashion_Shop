@@ -177,6 +177,14 @@ export const reviewsAPI = {
         const queryString = searchParams.toString();
         return fetchAPI(`/reviews/products/${productId}${queryString ? `?${queryString}` : ''}`);
     },
+    create: (data) => {
+        const token = localStorage.getItem('token');
+        return fetchAPI('/reviews', {
+            method: 'POST',
+            body: JSON.stringify(data),
+            headers: token ? { Authorization: `Bearer ${token}` } : {}
+        });
+    },
     listAll: () => {
         const token = localStorage.getItem('token');
         return fetchAPI('/reviews', {

@@ -196,7 +196,14 @@ async def get_my_orders(
     result = []
     for order in orders:
         items_result = await session.execute(
-            text("SELECT * FROM order_items WHERE order_id = :order_id"),
+            text(
+                """
+                SELECT oi.*, pv.product_id
+                FROM order_items oi
+                LEFT JOIN product_variants pv ON oi.product_variant_id = pv.variant_id
+                WHERE oi.order_id = :order_id
+                """
+            ),
             {"order_id": order["order_id"]}
         )
         items = [dict(item) for item in items_result.mappings().all()]
@@ -268,7 +275,14 @@ async def cancel_my_order(
     await session.commit()
 
     items_result = await session.execute(
-        text("SELECT * FROM order_items WHERE order_id = :order_id"),
+        text(
+            """
+            SELECT oi.*, pv.product_id
+            FROM order_items oi
+            LEFT JOIN product_variants pv ON oi.product_variant_id = pv.variant_id
+            WHERE oi.order_id = :order_id
+            """
+        ),
         {"order_id": order_id},
     )
     order["items"] = [dict(item) for item in items_result.mappings().all()]
