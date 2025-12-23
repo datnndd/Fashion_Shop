@@ -178,6 +178,22 @@ const AdminDashboard = () => {
                     }).map((item, i) => <span key={i} className="text-center">{item.label}</span>)}
                 </div>
 
+                {/* Revenue Value Labels */}
+                <div className="absolute inset-0 pointer-events-none">
+                    {revenuePoints.map((point, i) => (
+                        <div
+                            key={`rev-label-${i}`}
+                            className="absolute -translate-x-1/2 -translate-y-full text-[11px] bg-[#1a1a2e] text-white px-2 py-1 rounded border border-[#d411d4]/40 shadow-md whitespace-nowrap"
+                            style={{
+                                left: `${(point.x / chartWidth) * 100}%`,
+                                top: `${Math.max(0, ((point.y - 8) / chartHeight) * 100)}%`
+                            }}
+                        >
+                            {formatPriceVND(point.value)}
+                        </div>
+                    ))}
+                </div>
+
                 {/* Revenue Points Interaction */}
                 <div className="absolute inset-0 pointer-events-none">
                     {revenuePoints.map((point, i) => (
