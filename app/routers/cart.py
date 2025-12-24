@@ -226,10 +226,20 @@ async def add_to_cart(
 ) -> CartRead:
     """
     Add a product variant to the cart (or increase quantity if it already exists).
+    _get_or_create_cart(session, current_user["user_id"])
     """
     cart = await _get_or_create_cart(session, current_user["user_id"])
 
     # Validate variant exists and is active using ORM
+    """
+    
+    select(ProductVariant)
+        .options(joinedload(ProductVariant.product))
+        .where(ProductVariant.variant_id == payload.product_variant_id)
+
+    result = await session.execute(stmt)
+    variant = result.scalar_one_or_none()
+    """
     stmt = (
         select(ProductVariant)
         .options(joinedload(ProductVariant.product))
@@ -238,6 +248,7 @@ async def add_to_cart(
     result = await session.execute(stmt)
     variant = result.scalar_one_or_none()
 
+    #HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product variant not found")
     if not variant:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product variant not found")
     
@@ -248,6 +259,7 @@ async def add_to_cart(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Not enough stock for this product")
 
     # Check if item already in cart
+    
     stmt_item = select(CartItem).where(
         CartItem.cart_id == cart.cart_id,
         CartItem.product_variant_id == payload.product_variant_id

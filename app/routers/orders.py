@@ -126,6 +126,7 @@ async def update_order_status(
     Update order status. Admin only.
     
     SQL: UPDATE orders SET status = :status WHERE order_id = :order_id RETURNING *
+    if not result.mappings().one_or_none()
     """
     # Check order exists
     result = await session.execute(

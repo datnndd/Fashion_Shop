@@ -26,6 +26,9 @@ async def create_province(payload: ProvinceCreate, session: AsyncSession = Depen
     Create a new province.
     
     SQL: INSERT INTO provinces (code, name) VALUES (...) RETURNING *
+    province = result.mappings().one()
+    await session.commit()
+    return dict(province)
     """
     result = await session.execute(
         text("INSERT INTO provinces (code, name) VALUES (:code, :name) RETURNING *"),
@@ -42,6 +45,7 @@ async def list_provinces(session: AsyncSession = Depends(get_session)) -> list[P
     List all provinces.
     
     SQL: SELECT * FROM provinces
+    return [dict(p) for p in result.mappings().all()]
     """
     result = await session.execute(text("SELECT * FROM provinces"))
     return [dict(p) for p in result.mappings().all()]
@@ -55,6 +59,9 @@ async def create_ward(payload: WardCreate, session: AsyncSession = Depends(get_s
     Create a new ward.
     
     SQL: INSERT INTO wards (...) VALUES (...) RETURNING *
+    ward = result.mappings().one()
+    await session.commit()
+    return dict(ward)
     """
     # Check province exists
     result = await session.execute(
@@ -133,6 +140,8 @@ async def create_address(payload: ShippingAddressCreate, session: AsyncSession =
         )
 
     # Insert address
+    #user_id, province_id, ward_id, recipient_name, recipient_phone, 
+    #street, full_address, is_default
     result = await session.execute(
         text("""
             INSERT INTO shipping_addresses (
@@ -234,6 +243,8 @@ async def create_my_address(
         )
 
     # Insert address
+    #user_id, province_id, ward_id, recipient_name, recipient_phone, 
+    #street, full_address, is_default
     result = await session.execute(
         text("""
             INSERT INTO shipping_addresses (

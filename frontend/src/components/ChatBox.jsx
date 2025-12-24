@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 
-const WEBHOOK_URL = 'https://n8n.postiznguyendoandat.click/webhook/54cec83b-2fb7-44a6-b253-9d3e51b08bd9';
+const WEBHOOK_URL = import.meta.env.VITE_WEBHOOK_URL;
 
 const generateSessionId = () => {
     const randomSegment = Math.random().toString(16).slice(2);

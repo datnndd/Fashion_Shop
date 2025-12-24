@@ -16,7 +16,14 @@ router = APIRouter(prefix="/catalog", tags=["catalog"])
 
 
 async def _get_product_categories(session: AsyncSession, product_id: int) -> list[int]:
-    """Return category ids for a product (from join table)."""
+    """Return category ids for a product (from join table).
+    ("SELECT category_id FROM product_categories WHERE product_id = :product_id"),
+        {"product_id": product_id}
+        
+        [row.category_id for row in result]
+        """
+
+
     result = await session.execute(
         text("SELECT category_id FROM product_categories WHERE product_id = :product_id"),
         {"product_id": product_id}
@@ -25,7 +32,15 @@ async def _get_product_categories(session: AsyncSession, product_id: int) -> lis
 
 
 async def _set_product_categories(session: AsyncSession, product_id: int, category_ids: list[int]) -> None:
-    """Replace product categories with provided list."""
+    """Replace product categories with provided list.
+        
+        INSERT INTO product_categories (product_id, category_id)
+        VALUES (:product_id, :category_id)
+        ON CONFLICT DO NOTHING),
+        {"product_id": product_id, "category_id": cat_id}
+    """
+
+
     await session.execute(
         text("DELETE FROM product_categories WHERE product_id = :product_id"),
         {"product_id": product_id}
@@ -44,7 +59,16 @@ async def _set_product_categories(session: AsyncSession, product_id: int, catego
 
 
 async def _get_categories_for_products(session: AsyncSession, product_ids: list[int]) -> dict[int, list[int]]:
-    """Fetch categories for multiple products in one query."""
+    """Fetch categories for multiple products in one query.
+    SELECT product_id, category_id FROM product_categories 
+    WHERE product_id = ANY(:product_ids)
+    mapping: dict[int, list[int]] = {}
+    for row in result:
+        mapping.setdefault(row.product_id, []).append(row.category_id)
+    return mapping
+    """
+
+
     if not product_ids:
         return {}
     result = await session.execute(
@@ -57,14 +81,27 @@ async def _get_categories_for_products(session: AsyncSession, product_ids: list[
     return mapping
 
 async def _get_category_descendants(session: AsyncSession, category_id: int) -> list[int]:
-    """Get all descendant category IDs including the parent itself."""
-    query = text("""
-        WITH RECURSIVE cat_tree AS (
+    """Get all descendant category IDs including the parent itself.
+    WITH RECURSIVE cat_tree AS (
             SELECT category_id FROM categories WHERE category_id = :category_id
             UNION ALL
             SELECT c.category_id FROM categories c
             JOIN cat_tree ct ON c.parent_id = ct.category_id
         )
+        SELECT category_id FROM cat_tree
+    result = await session.execute(query, {"category_id": category_id})
+    return [row[0] for row in result.all()]
+    """
+
+
+    query = text("""
+        WITH RECURSIVE cat_tree AS (
+          SELECT category_id FROM categories WHERE category_id = :category_id
+          UNION ALL
+          SELECT c.category_id from categories c
+          JOIN cat_tree ct on c.parent_id = ct.category_id
+        )
+
         SELECT category_id FROM cat_tree
     """)
     result = await session.execute(query, {"category_id": category_id})
@@ -130,6 +167,11 @@ async def create_category(
     Create a new category. Requires admin role.
     
     SQL: INSERT INTO categories (...) VALUES (...) RETURNING *
+
+    (:name, :slug, :description, :image, :parent_id, :is_active)
+    category = result.mappings().one()
+    await session.commit()
+    return dict(category)
     """
     result = await session.execute(
         text("""
@@ -149,7 +191,6 @@ async def create_category(
     category = result.mappings().one()
     await session.commit()
     return dict(category)
-
  
 
 @router.get("/categories/{category_id}", response_model=CategoryRead)
@@ -161,7 +202,14 @@ async def get_category(
     Get a single category by ID.
     
     SQL: SELECT * FROM categories WHERE category_id = :category_id
+    category = result.mappings().one_or_none()
+    if not category:
+        raise HTTPException
+    return dict(category)
     """
+
+
+
     result = await session.execute(
         text("SELECT * FROM categories WHERE category_id = :category_id"),
         {"category_id": category_id}
@@ -181,6 +229,11 @@ async def list_categories(
     List categories with optional active filter.
     
     SQL: SELECT * FROM categories WHERE ... ORDER BY name
+    if is_active is not None:
+        conditions.append("is_active = :is_active")
+        params["is_active"] = is_active
+
+    return [dict(row) for row in result.mappings().all()]
     """
     conditions = []
     params: dict = {}
@@ -204,7 +257,17 @@ async def update_category(
     """
     Update a category. Requires admin role.
     
-    SQL: UPDATE categories SET ... WHERE category_id = :category_id RETURNING *
+    SQL: UPDATE categories SET {set_clause} WHERE category_id = :category_id RETURNING *
+    if not result.mappings().one_or_none():
+
+    update_data = payload.model_dump(exclude_unset=True)
+    if not update_data:
+
+    set_clause = ", ".join(f"{key} = :{key}" for key in update_data.keys())
+    update_data["category_id"] = category_id
+    category = result.mappings().one()
+    await session.commit()
+    return dict(category)
     """
     # Check exists
     result = await session.execute(
@@ -241,6 +304,11 @@ async def delete_category(
     Delete a category. Requires admin role.
     
     SQL: DELETE FROM categories WHERE category_id = :category_id
+    await session.execute(
+        text("DELETE FROM categories WHERE category_id = :category_id"),
+        {"category_id": category_id}
+    )
+    await session.commit()
     """
     # Check exists
     result = await session.execute(
@@ -299,8 +367,14 @@ async def create_product(
 
     # Insert product
     # Serialize images to JSON for asyncpg
+
     images_json = json.dumps(payload.images) if payload.images else json.dumps([])
-    
+    """
+    INSERT INTO products 
+    (category_id, name, slug, description, base_price, thumbnail, 
+    is_new, discount_percent, badge, images, is_published, created_at)
+    VALUES (:category_id,
+    """
     product_result = await session.execute(
         text("""
             INSERT INTO products (category_id, name, slug, description, base_price, thumbnail, 
