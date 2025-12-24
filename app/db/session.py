@@ -22,8 +22,12 @@ def _build_connect_args() -> dict:
     if sslmode == "disable":
         args["ssl"] = False
     else:
-        # default: require SSL
-        args["ssl"] = ssl.create_default_context()
+        # default: require SSL but don't verify certificates
+        # (Supabase/Render use self-signed certificates)
+        ssl_context = ssl.create_default_context()
+        ssl_context.check_hostname = False
+        ssl_context.verify_mode = ssl.CERT_NONE
+        args["ssl"] = ssl_context
     return args
 
 
