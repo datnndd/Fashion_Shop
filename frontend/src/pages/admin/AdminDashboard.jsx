@@ -52,24 +52,29 @@ const AdminDashboard = () => {
         }
     };
 
-    const formatChange = (value) => {
-        if (value === undefined || value === null || Number.isNaN(value)) return '0.0%';
+    const formatChange = (value, total) => {
+        if (value === undefined || value === null || Number.isNaN(value)) return null;
+        // Hide the percent badge when there's no current data (e.g., total is 0) to avoid showing "-100.0%"
+        if ((total ?? 0) === 0 && value <= -100) return null;
         const prefix = value >= 0 ? '+' : '';
         return `${prefix}${value.toFixed(1)}%`;
     };
+
+    const revenueChange = formatChange(dashboardData?.revenue_change_percent, dashboardData?.total_revenue);
+    const orderChange = formatChange(dashboardData?.order_change_percent, dashboardData?.total_orders);
 
     const statsCards = [
         {
             label: 'Total Revenue',
             value: formatPriceVND(dashboardData?.total_revenue || 0),
-            change: formatChange(dashboardData?.revenue_change_percent),
+            change: revenueChange,
             positive: dashboardData?.revenue_change_percent >= 0,
             icon: 'payments'
         },
         {
             label: 'Orders',
             value: (dashboardData?.total_orders ?? 0).toString(),
-            change: formatChange(dashboardData?.order_change_percent),
+            change: orderChange,
             positive: dashboardData?.order_change_percent >= 0,
             icon: 'shopping_bag'
         },
@@ -336,9 +341,11 @@ const AdminDashboard = () => {
                             <div className="w-12 h-12 bg-[#d411d4]/10 rounded-lg flex items-center justify-center">
                                 <span className="material-symbols-outlined text-[#d411d4]">{stat.icon}</span>
                             </div>
-                            <span className={`text-xs font-medium px-2 py-1 rounded ${stat.positive ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
-                                {stat.change}
-                            </span>
+                            {stat.change && (
+                                <span className={`text-xs font-medium px-2 py-1 rounded ${stat.positive ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                                    {stat.change}
+                                </span>
+                            )}
                         </div>
                         <h3 className="text-2xl font-bold">{stat.value}</h3>
                         <p className="text-gray-400 text-sm mt-1">{stat.label}</p>

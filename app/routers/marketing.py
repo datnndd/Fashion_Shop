@@ -53,7 +53,8 @@ async def list_discounts(
     List all discounts. Requires admin role.
     """
     if is_active is not None:
-        query = text("SELECT * FROM discounts WHERE is_active = :is_active ORDER BY created_at DESC")
+        # Table has no created_at column; sort by latest discount_id instead
+        query = text("SELECT * FROM discounts WHERE is_active = :is_active ORDER BY discount_id DESC")
         params = {"is_active": is_active}
     else:
         query = text("SELECT * FROM discounts ORDER BY discount_id DESC")

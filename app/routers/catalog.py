@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 import json
-from sqlalchemy import text
+from sqlalchemy import Integer, bindparam, text
+from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_session
@@ -684,7 +685,7 @@ async def related_products(
 
     query = text("""
         WITH target_cats AS (
-            SELECT UNNEST(:category_ids::int[]) AS category_id
+            SELECT UNNEST(:category_ids) AS category_id
         )
         SELECT p.*, COUNT(*) AS score
         FROM products p
@@ -695,7 +696,11 @@ async def related_products(
         GROUP BY p.product_id
         ORDER BY score DESC, p.created_at DESC
         LIMIT :limit
-    """)
+    """).bindparams(
+        bindparam("category_ids", type_=ARRAY(Integer)),
+        bindparam("product_id", type_=Integer),
+        bindparam("limit", type_=Integer),
+    )
     result = await session.execute(
         query,
         {"category_ids": category_ids, "product_id": product_id, "limit": limit}
