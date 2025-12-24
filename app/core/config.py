@@ -5,6 +5,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     app_name: str = "Fashion Shop API"
     database_url: str
+    database_sslmode: str = "require"  # require|disable
     secret_key: str = "supersecretkey"
     access_token_expire_minutes: int = 30
     stripe_secret_key: str = "sk_test_PLACEHOLDER"
