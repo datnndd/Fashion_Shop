@@ -63,6 +63,25 @@ async def list_discounts(
     result = await session.execute(query, params)
     return [dict(d) for d in result.mappings().all()]
 
+
+@router.get("/discounts/public", response_model=list[DiscountRead])
+async def list_public_discounts(
+    is_active: bool | None = Query(default=True),
+    session: AsyncSession = Depends(get_session),
+) -> list[DiscountRead]:
+    """
+    Public endpoint to list active discounts for customers (no admin required).
+    """
+    if is_active is not None:
+        query = text("SELECT * FROM discounts WHERE is_active = :is_active ORDER BY discount_id DESC")
+        params = {"is_active": is_active}
+    else:
+        query = text("SELECT * FROM discounts ORDER BY discount_id DESC")
+        params = {}
+
+    result = await session.execute(query, params)
+    return [dict(d) for d in result.mappings().all()]
+
 @router.get("/discounts/{discount_id}", response_model=DiscountRead)
 async def get_discount(
     discount_id: int,

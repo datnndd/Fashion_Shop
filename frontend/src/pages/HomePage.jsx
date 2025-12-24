@@ -1,12 +1,76 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { formatPriceVND } from '../utils/currency';
 import { categoriesAPI, productsAPI } from '../services/api';
+
+const useAutoHorizontalLoop = (ref, shouldRun) => {
+    useEffect(() => {
+        const container = ref.current;
+        if (!container || !shouldRun) return;
+
+        let frameId;
+        const speed = 0.8; // gentle horizontal scroll speed
+
+        container.scrollLeft = 0;
+
+        const step = () => {
+            const maxScroll = container.scrollWidth / 2;
+            if (maxScroll > 0) {
+                container.scrollLeft = (container.scrollLeft + speed) % maxScroll;
+            }
+            frameId = requestAnimationFrame(step);
+        };
+
+        frameId = requestAnimationFrame(step);
+        return () => cancelAnimationFrame(frameId);
+    }, [shouldRun]);
+};
+
+const ProductCard = ({ product, badgeClassName, badgeText }) => (
+    <Link
+        to={`/product/${product.product_id}`}
+        className="group flex flex-col gap-3 flex-[0_0_72%] sm:flex-[0_0_55%] md:flex-[0_0_45%] lg:flex-[0_0_23%]"
+    >
+        <div className="relative w-full aspect-[3/4] bg-[#2A2422] rounded-2xl overflow-hidden border border-white/5 shadow-2xl transition-all duration-500 group-hover:shadow-[0_0_30px_rgba(212,17,212,0.15)] group-hover:-translate-y-1">
+            {product.thumbnail ? (
+                <img
+                    src={product.thumbnail}
+                    alt={product.name}
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                />
+            ) : (
+                <div className="w-full h-full flex flex-col items-center justify-center bg-white/5 text-white/20 gap-2">
+                    <span className="material-symbols-outlined text-4xl">image</span>
+                </div>
+            )}
+            <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/80 to-transparent opacity-60 group-hover:opacity-80 transition-opacity"></div>
+            {badgeText && (
+                <div className="absolute top-3 right-3">
+                    <span className={`${badgeClassName} text-white text-[10px] font-black tracking-widest px-2 py-1 rounded-sm shadow-lg`}>
+                        {badgeText}
+                    </span>
+                </div>
+            )}
+        </div>
+        <div className="px-1">
+            <h3 className="text-lg font-bold text-white group-hover:text-[#d411d4] transition-colors leading-tight">
+                {product.name}
+            </h3>
+            <div className="flex items-center justify-between mt-1">
+                <span className="text-gray-400 font-sans text-sm">
+                    {formatPriceVND(product.base_price)}
+                </span>
+            </div>
+        </div>
+    </Link>
+);
 
 const HomePage = () => {
     const [categories, setCategories] = useState([]);
     const [newProducts, setNewProducts] = useState([]);
     const [bestSellers, setBestSellers] = useState([]);
+    const newScrollRef = useRef(null);
+    const bestScrollRef = useRef(null);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -14,8 +78,8 @@ const HomePage = () => {
                 // Parallel fetch
                 const [categoriesData, newData, bestData] = await Promise.all([
                     categoriesAPI.list(true),
-                    productsAPI.list({ is_new: true, limit: 4 }),
-                    productsAPI.list({ sort_by: 'best_selling', limit: 4 })
+                    productsAPI.list({ isNew: true, limit: 8 }),
+                    productsAPI.list({ sortBy: 'best_selling', limit: 8 })
                 ]);
 
                 setCategories(categoriesData);
@@ -27,6 +91,14 @@ const HomePage = () => {
         };
         fetchData();
     }, []);
+
+    const truncatedNewProducts = newProducts.slice(0, 8);
+    const truncatedBestSellers = bestSellers.slice(0, 8);
+    const duplicatedNewProducts = truncatedNewProducts.length ? [...truncatedNewProducts, ...truncatedNewProducts] : [];
+    const duplicatedBestSellers = truncatedBestSellers.length ? [...truncatedBestSellers, ...truncatedBestSellers] : [];
+
+    useAutoHorizontalLoop(newScrollRef, duplicatedNewProducts.length);
+    useAutoHorizontalLoop(bestScrollRef, duplicatedBestSellers.length);
     return (
         <main className="flex-grow flex flex-col">
             {/* Hero Section */}
@@ -135,44 +207,21 @@ const HomePage = () => {
                         </Link>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                        {newProducts.map((product) => (
-                            <Link
-                                key={product.product_id}
-                                to={`/product/${product.product_id}`}
-                                className="group flex flex-col gap-3"
-                            >
-                                <div className="relative w-full aspect-[3/4] bg-[#2A2422] rounded-2xl overflow-hidden border border-white/5 shadow-2xl transition-all duration-500 group-hover:shadow-[0_0_30px_rgba(212,17,212,0.15)] group-hover:-translate-y-1">
-                                    {product.thumbnail ? (
-                                        <img
-                                            src={product.thumbnail}
-                                            alt={product.name}
-                                            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                                        />
-                                    ) : (
-                                        <div className="w-full h-full flex flex-col items-center justify-center bg-white/5 text-white/20 gap-2">
-                                            <span className="material-symbols-outlined text-4xl">image</span>
-                                        </div>
-                                    )}
-                                    <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/80 to-transparent opacity-60 group-hover:opacity-80 transition-opacity"></div>
-                                    <div className="absolute top-3 right-3">
-                                        <span className="bg-[#d411d4] text-white text-[10px] font-black tracking-widest px-2 py-1 rounded-sm shadow-lg">
-                                            NEW
-                                        </span>
-                                    </div>
-                                </div>
-                                <div className="px-1">
-                                    <h3 className="text-lg font-bold text-white group-hover:text-[#d411d4] transition-colors leading-tight">
-                                        {product.name}
-                                    </h3>
-                                    <div className="flex items-center justify-between mt-1">
-                                        <span className="text-gray-400 font-sans text-sm">
-                                            {formatPriceVND(product.base_price)}
-                                        </span>
-                                    </div>
-                                </div>
-                            </Link>
-                        ))}
+                    <div className="relative">
+                        <div className="pointer-events-none absolute inset-y-0 left-0 w-12 bg-gradient-to-r from-[#1F1B18] to-transparent"></div>
+                        <div className="pointer-events-none absolute inset-y-0 right-0 w-12 bg-gradient-to-l from-[#1F1B18] to-transparent"></div>
+                        <div ref={newScrollRef} className="overflow-hidden scrollbar-hide">
+                            <div className="flex gap-4 sm:gap-5 lg:gap-6">
+                                {duplicatedNewProducts.map((product, index) => (
+                                    <ProductCard
+                                        key={`${product.product_id}-new-${index}`}
+                                        product={product}
+                                        badgeClassName="bg-[#d411d4]"
+                                        badgeText="NEW"
+                                    />
+                                ))}
+                            </div>
+                        </div>
                     </div>
                 </section>
             )}
@@ -192,44 +241,21 @@ const HomePage = () => {
                         </Link>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                        {bestSellers.map((product) => (
-                            <Link
-                                key={product.product_id}
-                                to={`/product/${product.product_id}`}
-                                className="group flex flex-col gap-3"
-                            >
-                                <div className="relative w-full aspect-[3/4] bg-[#2A2422] rounded-2xl overflow-hidden border border-white/5 shadow-2xl transition-all duration-500 group-hover:shadow-[0_0_30px_rgba(212,17,212,0.15)] group-hover:-translate-y-1">
-                                    {product.thumbnail ? (
-                                        <img
-                                            src={product.thumbnail}
-                                            alt={product.name}
-                                            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                                        />
-                                    ) : (
-                                        <div className="w-full h-full flex flex-col items-center justify-center bg-white/5 text-white/20 gap-2">
-                                            <span className="material-symbols-outlined text-4xl">image</span>
-                                        </div>
-                                    )}
-                                    <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/80 to-transparent opacity-60 group-hover:opacity-80 transition-opacity"></div>
-                                    <div className="absolute top-3 right-3">
-                                        <span className="bg-orange-500 text-white text-[10px] font-black tracking-widest px-2 py-1 rounded-sm shadow-lg">
-                                            HOT
-                                        </span>
-                                    </div>
-                                </div>
-                                <div className="px-1">
-                                    <h3 className="text-lg font-bold text-white group-hover:text-[#d411d4] transition-colors leading-tight">
-                                        {product.name}
-                                    </h3>
-                                    <div className="flex items-center justify-between mt-1">
-                                        <span className="text-gray-400 font-sans text-sm">
-                                            {formatPriceVND(product.base_price)}
-                                        </span>
-                                    </div>
-                                </div>
-                            </Link>
-                        ))}
+                    <div className="relative">
+                        <div className="pointer-events-none absolute inset-y-0 left-0 w-12 bg-gradient-to-r from-[#1F1B18] to-transparent"></div>
+                        <div className="pointer-events-none absolute inset-y-0 right-0 w-12 bg-gradient-to-l from-[#1F1B18] to-transparent"></div>
+                        <div ref={bestScrollRef} className="overflow-hidden scrollbar-hide">
+                            <div className="flex gap-4 sm:gap-5 lg:gap-6">
+                                {duplicatedBestSellers.map((product, index) => (
+                                    <ProductCard
+                                        key={`${product.product_id}-best-${index}`}
+                                        product={product}
+                                        badgeClassName="bg-orange-500"
+                                        badgeText="HOT"
+                                    />
+                                ))}
+                            </div>
+                        </div>
                     </div>
                 </section>
             )}

@@ -149,27 +149,7 @@ async def create_category(
     await session.commit()
     return dict(category)
 
-
-@router.get("/categories", response_model=list[CategoryRead])
-async def list_categories(
-    is_active: bool | None = Query(default=None),
-    session: AsyncSession = Depends(get_session),
-) -> list[CategoryRead]:
-    """
-    List all categories with optional filter.
-    
-    SQL: SELECT * FROM categories [WHERE is_active = :is_active]
-    """
-    if is_active is not None:
-        query = text("SELECT * FROM categories WHERE is_active = :is_active")
-        params = {"is_active": is_active}
-    else:
-        query = text("SELECT * FROM categories")
-        params = {}
-    
-    result = await session.execute(query, params)
-    return [dict(c) for c in result.mappings().all()]
-
+ 
 
 @router.get("/categories/{category_id}", response_model=CategoryRead)
 async def get_category(
@@ -189,6 +169,28 @@ async def get_category(
     if not category:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Category not found")
     return dict(category)
+
+
+@router.get("/categories", response_model=list[CategoryRead])
+async def list_categories(
+    is_active: bool | None = Query(default=None),
+    session: AsyncSession = Depends(get_session),
+) -> list[CategoryRead]:
+    """
+    List categories with optional active filter.
+    
+    SQL: SELECT * FROM categories WHERE ... ORDER BY name
+    """
+    conditions = []
+    params: dict = {}
+    if is_active is not None:
+        conditions.append("is_active = :is_active")
+        params["is_active"] = is_active
+
+    where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
+    query = text(f"SELECT * FROM categories {where_clause} ORDER BY name")
+    result = await session.execute(query, params)
+    return [dict(row) for row in result.mappings().all()]
 
 
 @router.put("/categories/{category_id}", response_model=CategoryRead)

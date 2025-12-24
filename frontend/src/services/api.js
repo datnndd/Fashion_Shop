@@ -50,17 +50,26 @@ async function fetchAPI(endpoint, options = {}) {
 export const productsAPI = {
     list: (params = {}) => {
         const searchParams = new URLSearchParams();
-        if (params.categoryId) searchParams.append('category_id', params.categoryId);
-        if (params.categoryIds && Array.isArray(params.categoryIds)) {
-            params.categoryIds.forEach((id) => searchParams.append('category_ids', id));
+        const categoryId = params.categoryId ?? params.category_id;
+        const categoryIds = params.categoryIds ?? params.category_ids;
+        const minPrice = params.minPrice ?? params.min_price;
+        const maxPrice = params.maxPrice ?? params.max_price;
+        const isNew = params.isNew ?? params.is_new;
+        const isSale = params.isSale ?? params.is_sale;
+        const isPublished = params.isPublished ?? params.is_published;
+        const sortBy = params.sortBy ?? params.sort_by;
+
+        if (categoryId) searchParams.append('category_id', categoryId);
+        if (categoryIds && Array.isArray(categoryIds)) {
+            categoryIds.forEach((id) => searchParams.append('category_ids', id));
         }
         if (params.q) searchParams.append('q', params.q);
-        if (params.minPrice) searchParams.append('min_price', params.minPrice);
-        if (params.maxPrice) searchParams.append('max_price', params.maxPrice);
-        if (params.isNew !== undefined) searchParams.append('is_new', params.isNew);
-        if (params.isSale !== undefined) searchParams.append('is_sale', params.isSale);
-        if (params.isPublished !== undefined) searchParams.append('is_published', params.isPublished);
-        if (params.sortBy) searchParams.append('sort_by', params.sortBy);
+        if (minPrice) searchParams.append('min_price', minPrice);
+        if (maxPrice) searchParams.append('max_price', maxPrice);
+        if (isNew !== undefined) searchParams.append('is_new', isNew);
+        if (isSale !== undefined) searchParams.append('is_sale', isSale);
+        if (isPublished !== undefined) searchParams.append('is_published', isPublished);
+        if (sortBy) searchParams.append('sort_by', sortBy);
         if (params.limit) searchParams.append('limit', params.limit);
         if (params.offset) searchParams.append('offset', params.offset);
 
@@ -135,6 +144,10 @@ export const marketingAPI = {
         return fetchAPI(`/marketing/discounts${params}`, {
             headers: token ? { Authorization: `Bearer ${token}` } : {}
         });
+    },
+    listPublic: (isActive = true) => {
+        const params = isActive !== null ? `?is_active=${isActive}` : '';
+        return fetchAPI(`/marketing/discounts/public${params}`);
     },
     get: (discountId) => {
         const token = localStorage.getItem('token');

@@ -124,10 +124,10 @@ const CheckoutPage = () => {
     useEffect(() => {
         const fetchDiscounts = async () => {
             try {
-                const data = await api.marketing.list(true);
+                const data = await api.marketing.listPublic(true);
                 setDiscounts(data || []);
             } catch (error) {
-                console.warn('Failed to fetch discounts (may require admin):', error);
+                console.warn('Failed to fetch discounts:', error);
             }
         };
         fetchDiscounts();
