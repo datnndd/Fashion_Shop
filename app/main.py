@@ -22,7 +22,7 @@ app = FastAPI(title=settings.app_name, lifespan=lifespan)
 # CORS middleware for frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.allowed_origins.split(","),  # Vite dev server
+    allow_origins=settings.allowed_origins_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

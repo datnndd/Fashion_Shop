@@ -21,6 +21,11 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(env_file="app/.env", extra="ignore")
 
+    @property
+    def allowed_origins_list(self) -> list[str]:
+        # Normalize origins to avoid mismatches caused by whitespace or trailing slashes
+        return [origin.strip().rstrip("/") for origin in self.allowed_origins.split(",") if origin.strip()]
+
 
 settings = Settings()
 
