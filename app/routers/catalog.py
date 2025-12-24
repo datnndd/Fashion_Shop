@@ -1,6 +1,7 @@
+from collections import Counter
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 import json
-from sqlalchemy import Integer, bindparam, text
+from sqlalchemy import Integer, String, bindparam, text
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -67,6 +68,53 @@ async def _get_category_descendants(session: AsyncSession, category_id: int) -> 
     """)
     result = await session.execute(query, {"category_id": category_id})
     return [row[0] for row in result.all()]
+
+
+async def _ensure_skus_available(
+    session: AsyncSession,
+    sku_items: list[tuple[str, int | None]],
+) -> None:
+    """
+    Validate that provided SKUs are unique within the payload and not already taken.
+
+    sku_items: list of (sku, allowed_variant_id) where allowed_variant_id means
+    that SKU can be reused by that specific variant (when updating).
+    """
+    normalized = []
+    for sku, _ in sku_items:
+        if not sku or not sku.strip():
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="SKU cannot be empty")
+        normalized.append(sku.strip())
+
+    duplicates = [sku for sku, count in Counter(normalized).items() if count > 1]
+    if duplicates:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Duplicate SKUs in request: {', '.join(duplicates)}",
+        )
+
+    if not normalized:
+        return
+
+    sku_lookup: dict[str, set[int | None]] = {}
+    for (sku, allowed_id) in sku_items:
+        sku_lookup.setdefault(sku.strip(), set()).add(allowed_id)
+
+    query = text("SELECT variant_id, sku FROM product_variants WHERE sku = ANY(:skus)").bindparams(
+        bindparam("skus", type_=ARRAY(String))
+    )
+    result = await session.execute(query, {"skus": normalized})
+    conflicts: list[str] = []
+    for row in result:
+        allowed_ids = sku_lookup.get(row.sku, set())
+        if row.variant_id not in allowed_ids:
+            conflicts.append(row.sku)
+
+    if conflicts:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"SKU(s) already exist: {', '.join(sorted(set(conflicts)))}",
+        )
 
 
 # ==================== CATEGORIES ====================
@@ -232,6 +280,12 @@ async def create_product(
     SQL: INSERT INTO products (...) VALUES (...) RETURNING *
          INSERT INTO product_variants (...) VALUES (...) for each variant
     """
+    # Validate SKUs before starting write operations to avoid transaction errors
+    await _ensure_skus_available(
+        session,
+        [(variant.sku, None) for variant in (payload.variants or [])]
+    )
+
     # Check category exists
     cat_result = await session.execute(
         text("SELECT * FROM categories WHERE category_id = :category_id"),
@@ -434,7 +488,28 @@ async def update_product(
             text("SELECT variant_id, sku FROM product_variants WHERE product_id = :product_id"),
             {"product_id": product_id}
         )
-        existing_ids = {row.variant_id for row in var_result}
+        existing_rows = list(var_result)
+        existing_ids = {row.variant_id for row in existing_rows}
+        existing_sku_map = {row.variant_id: row.sku for row in existing_rows}
+
+        # Pre-validate SKUs (both payload duplicates and DB conflicts)
+        sku_items: list[tuple[str, int | None]] = []
+        seen_payload_skus: set[str] = set()
+        for v_data in payload.variants:
+            v_dict = v_data.model_dump(exclude_unset=True)
+            v_id = v_dict.get("variant_id")
+            target_sku = v_dict.get("sku") or existing_sku_map.get(v_id)
+            if not target_sku:
+                raise HTTPException(status_code=400, detail="SKU is required for variants")
+            if target_sku in seen_payload_skus:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Duplicate SKU '{target_sku}' in variants payload",
+                )
+            seen_payload_skus.add(target_sku)
+            sku_items.append((target_sku, v_id if v_id in existing_ids else None))
+
+        await _ensure_skus_available(session, sku_items)
         
         touched_ids = set()
         
@@ -447,6 +522,9 @@ async def update_product(
                     v_dict[k] = json.dumps(v_dict[k])
             
             v_id = v_dict.pop("variant_id", None)
+            target_sku = v_dict.get("sku") or existing_sku_map.get(v_id)
+            if target_sku:
+                v_dict["sku"] = target_sku
             
             if v_id and v_id in existing_ids:
                 # Update existing
@@ -746,6 +824,8 @@ async def create_variant(
     
     SQL: INSERT INTO product_variants (...) VALUES (...) RETURNING *
     """
+    await _ensure_skus_available(session, [(payload.sku, None)])
+
     # Check product exists
     result = await session.execute(
         text("SELECT * FROM products WHERE product_id = :product_id"),

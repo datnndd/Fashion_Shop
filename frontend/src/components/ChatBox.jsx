@@ -1,9 +1,28 @@
 import { useState, useRef, useEffect } from 'react';
 
-const WEBHOOK_URL = 'https://n8n.postiznguyendoandat.click/webhook-test/54cec83b-2fb7-44a6-b253-9d3e51b08bd9';
+const WEBHOOK_URL = 'https://n8n.postiznguyendoandat.click/webhook/54cec83b-2fb7-44a6-b253-9d3e51b08bd9';
+
+const generateSessionId = () => {
+    const randomSegment = Math.random().toString(16).slice(2);
+    return typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+        ? crypto.randomUUID()
+        : `session-${Date.now()}-${randomSegment}`;
+};
+
+const loadSessionId = () => {
+    if (typeof window === 'undefined') return '';
+
+    const existing = window.localStorage.getItem('chatSessionId');
+    if (existing) return existing;
+
+    const newId = generateSessionId();
+    window.localStorage.setItem('chatSessionId', newId);
+    return newId;
+};
 
 const ChatBox = () => {
     const [isOpen, setIsOpen] = useState(false);
+    const [sessionId, setSessionId] = useState(loadSessionId);
     const [messages, setMessages] = useState([
         {
             id: 1,
@@ -29,8 +48,29 @@ const ChatBox = () => {
         }
     }, [isOpen]);
 
+    useEffect(() => {
+        if (!sessionId) {
+            const newId = loadSessionId();
+            setSessionId(newId);
+        }
+    }, [sessionId]);
+
+    const refreshSessionId = () => {
+        const newId = generateSessionId();
+        setSessionId(newId);
+        if (typeof window !== 'undefined') {
+            window.localStorage.setItem('chatSessionId', newId);
+        }
+        return newId;
+    };
+
     const handleSendMessage = async () => {
         if (!inputValue.trim() || isLoading) return;
+
+        const activeSessionId = sessionId || loadSessionId();
+        if (!sessionId && activeSessionId) {
+            setSessionId(activeSessionId);
+        }
 
         const userMessage = {
             id: Date.now(),
@@ -50,6 +90,7 @@ const ChatBox = () => {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
+                    sessionId: activeSessionId,
                     message: userMessage.text,
                     timestamp: userMessage.timestamp.toISOString(),
                     conversationHistory: messages.map((m) => ({
@@ -64,11 +105,17 @@ const ChatBox = () => {
             }
 
             const data = await response.json();
+            const botReply =
+                data?.response ||
+                data?.message ||
+                data?.output ||
+                (Array.isArray(data) ? data[0]?.response || data[0]?.message || data[0]?.output : null) ||
+                'Xin lỗi, tôi không hiểu. Bạn có thể nói rõ hơn không?';
 
             const botMessage = {
                 id: Date.now() + 1,
                 type: 'bot',
-                text: data.response || data.message || data.output || 'Xin lỗi, tôi không hiểu. Bạn có thể nói rõ hơn không?',
+                text: botReply,
                 timestamp: new Date(),
             };
 
@@ -95,6 +142,7 @@ const ChatBox = () => {
     };
 
     const handleNewChat = () => {
+        refreshSessionId();
         setMessages([
             {
                 id: Date.now(),
@@ -156,8 +204,8 @@ const ChatBox = () => {
             {/* Chat Window */}
             <div
                 className={`fixed bottom-24 right-6 z-50 w-[380px] max-w-[calc(100vw-3rem)] transition-all duration-300 transform ${isOpen
-                        ? 'opacity-100 translate-y-0 pointer-events-auto'
-                        : 'opacity-0 translate-y-4 pointer-events-none'
+                    ? 'opacity-100 translate-y-0 pointer-events-auto'
+                    : 'opacity-0 translate-y-4 pointer-events-none'
                     }`}
             >
                 <div className="bg-[#1F1B18] border border-[#3D3530] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[70vh]">
@@ -221,8 +269,8 @@ const ChatBox = () => {
                             >
                                 <div
                                     className={`max-w-[80%] rounded-2xl px-4 py-3 ${message.type === 'user'
-                                            ? 'bg-gradient-to-br from-[#C07B5F] to-[#A66A51] text-white rounded-br-md'
-                                            : 'bg-[#2B2520] text-white border border-[#3D3530] rounded-bl-md'
+                                        ? 'bg-gradient-to-br from-[#C07B5F] to-[#A66A51] text-white rounded-br-md'
+                                        : 'bg-[#2B2520] text-white border border-[#3D3530] rounded-bl-md'
                                         }`}
                                 >
                                     <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.text}</p>
