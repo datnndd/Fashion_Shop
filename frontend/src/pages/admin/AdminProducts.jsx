@@ -18,6 +18,8 @@ const AdminProducts = () => {
     const [categorySearch, setCategorySearch] = useState('');
     const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
     const [bulkSizeSelection, setBulkSizeSelection] = useState([]);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize, setPageSize] = useState(10);
     const categoryDropdownRef = useRef(null);
 
     // Form state
@@ -458,6 +460,25 @@ const AdminProducts = () => {
         p.name.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
+    // Pagination helpers
+    const totalPages = Math.max(1, Math.ceil(filteredProducts.length / pageSize));
+    const paginatedProducts = filteredProducts.slice(
+        (currentPage - 1) * pageSize,
+        currentPage * pageSize
+    );
+    const currentStart = filteredProducts.length === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+    const currentEnd = Math.min(filteredProducts.length, currentPage * pageSize);
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchQuery, products, pageSize]);
+
+    useEffect(() => {
+        if (currentPage > totalPages) {
+            setCurrentPage(totalPages);
+        }
+    }, [currentPage, totalPages]);
+
     if (loading) {
         return (
             <div className="flex items-center justify-center h-64">
@@ -496,18 +517,6 @@ const AdminProducts = () => {
                             className="bg-transparent border-none outline-none text-sm w-full text-white placeholder-gray-500"
                         />
                     </div>
-                    <select className="bg-white/5 rounded-lg px-4 py-2 text-sm border-none outline-none cursor-pointer">
-                        <option value="" className="bg-[#1a1a2e]">All Categories</option>
-                        {categories.map(cat => (
-                            <option key={cat.category_id} value={cat.category_id} className="bg-[#1a1a2e]">{cat.name}</option>
-                        ))}
-                    </select>
-                    <select className="bg-white/5 rounded-lg px-4 py-2 text-sm border-none outline-none cursor-pointer">
-                        <option value="" className="bg-[#1a1a2e]">All Status</option>
-                        <option value="active" className="bg-[#1a1a2e]">Active</option>
-                        <option value="out-of-stock" className="bg-[#1a1a2e]">Out of Stock</option>
-                        <option value="draft" className="bg-[#1a1a2e]">Draft</option>
-                    </select>
                 </div>
             </div>
 
@@ -526,7 +535,7 @@ const AdminProducts = () => {
                             </tr>
                         </thead>
                         <tbody>
-                            {filteredProducts.map((product) => {
+                            {paginatedProducts.map((product) => {
                                 const status = getProductStatus(product);
                                 const variantCount = product.variants?.length || 0;
                                 return (
@@ -582,14 +591,49 @@ const AdminProducts = () => {
                 </div>
 
                 {/* Pagination */}
-                <div className="px-6 py-4 border-t border-white/5 flex items-center justify-between">
-                    <p className="text-sm text-gray-400">Showing {filteredProducts.length} of {products.length} products</p>
+                <div className="px-6 py-4 border-t border-white/5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-center gap-3 text-sm text-gray-400">
+                        <span>Showing {currentStart}-{currentEnd} of {filteredProducts.length} products</span>
+                        <label className="flex items-center gap-1 text-xs bg-white/5 px-2 py-1 rounded-lg border border-white/10">
+                            <span>Per page</span>
+                            <select
+                                value={pageSize}
+                                onChange={(e) => setPageSize(parseInt(e.target.value))}
+                                className="bg-transparent outline-none border-none text-white text-sm"
+                            >
+                                {[5, 10, 20, 50].map((size) => (
+                                    <option key={size} value={size} className="bg-[#1a1a2e]">{size}</option>
+                                ))}
+                            </select>
+                        </label>
+                    </div>
                     <div className="flex items-center gap-2">
-                        <button className="p-2 hover:bg-white/10 rounded-lg transition-colors text-gray-400 hover:text-white disabled:opacity-50" disabled>
+                        <button
+                            onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                            className="p-2 hover:bg-white/10 rounded-lg transition-colors text-gray-400 hover:text-white disabled:opacity-50"
+                            disabled={currentPage === 1}
+                        >
                             <span className="material-symbols-outlined text-[18px]">chevron_left</span>
                         </button>
-                        <button className="w-8 h-8 bg-[#d411d4] rounded-lg text-sm font-medium">1</button>
-                        <button className="p-2 hover:bg-white/10 rounded-lg transition-colors text-gray-400 hover:text-white disabled:opacity-50" disabled>
+                        <div className="flex items-center gap-1">
+                            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                                <button
+                                    key={page}
+                                    onClick={() => setCurrentPage(page)}
+                                    className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${page === currentPage
+                                        ? 'bg-[#d411d4] text-white'
+                                        : 'bg-white/5 text-gray-300 hover:bg-white/10'
+                                        }`}
+                                >
+                                    {page}
+                                </button>
+                            ))}
+                        </div>
+                        <button
+                            onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                            className="p-2 hover:bg-white/10 rounded-lg transition-colors text-gray-400 hover:text-white disabled:opacity-50"
+                            disabled={currentPage === totalPages}
+                        >
                             <span className="material-symbols-outlined text-[18px]">chevron_right</span>
                         </button>
                     </div>

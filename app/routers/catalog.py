@@ -4,6 +4,7 @@ import json
 from sqlalchemy import Integer, String, bindparam, text
 from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.exc import IntegrityError
 
 from app.db.session import get_session
 from app.deps import get_admin_user
@@ -619,11 +620,29 @@ async def delete_product(
     if not result.mappings().one_or_none():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Product not found")
 
-    await session.execute(
-        text("DELETE FROM products WHERE product_id = :product_id"),
-        {"product_id": product_id}
-    )
-    await session.commit()
+    try:
+        # Remove variants first to satisfy FK constraint
+        await session.execute(
+            text("DELETE FROM product_variants WHERE product_id = :product_id"),
+            {"product_id": product_id}
+        )
+        # Clean up join table entries
+        await session.execute(
+            text("DELETE FROM product_categories WHERE product_id = :product_id"),
+            {"product_id": product_id}
+        )
+        # Finally delete the product
+        await session.execute(
+            text("DELETE FROM products WHERE product_id = :product_id"),
+            {"product_id": product_id}
+        )
+        await session.commit()
+    except IntegrityError as e:
+        await session.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot delete product because it is referenced by other records (variants or orders)."
+        ) from e
 
 
 @router.get("/products", response_model=list[ProductRead])
