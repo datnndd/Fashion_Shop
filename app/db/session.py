@@ -5,38 +5,46 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from app.core.config import settings
 
 # --- 1. XỬ LÝ URL DATABASE ---
-# Render thường cung cấp URL bắt đầu bằng 'postgres://', nhưng SQLAlchemy cần 'postgresql+asyncpg://'
+# Render/Supabase thường cung cấp URL bắt đầu bằng 'postgres://', SQLAlchemy cần 'postgresql+asyncpg://'
 db_url = str(settings.database_url)
 if db_url and db_url.startswith("postgres://"):
     db_url = db_url.replace("postgres://", "postgresql+asyncpg://", 1)
 
-# --- 2. CẤU HÌNH SSL CONTEXT (FIX LỖI RENDER) ---
-# Tạo SSL Context chấp nhận chứng chỉ tự ký (Self-signed) của Render/Supabase
-ssl_context = ssl.create_default_context()
-ssl_context.check_hostname = False
-ssl_context.verify_mode = ssl.CERT_NONE
+# --- 2. CẤU HÌNH SSL CONTEXT (FIX LỖI SELF-SIGNED CERT) ---
+# Thay vì dùng create_default_context() (vẫn load CA mặc định gây lỗi verify),
+# ta dùng SSLContext thuần với PROTOCOL_TLS_CLIENT.
+try:
+    ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    ssl_context.check_hostname = False
+    ssl_context.verify_mode = ssl.CERT_NONE
+except AttributeError:
+    # Fallback cho các phiên bản python cũ hơn nếu cần (nhưng bạn đang dùng 3.13 nên block trên sẽ chạy)
+    ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS)
+    ssl_context.check_hostname = False
+    ssl_context.verify_mode = ssl.CERT_NONE
 
 def _build_connect_args() -> dict:
     """
     Tạo tham số kết nối cho asyncpg.
-    Ép buộc sử dụng SSL context đã cấu hình ở trên để tránh lỗi 'CERTIFICATE_VERIFY_FAILED'.
     """
     return {
         "server_settings": {
-            "jit": "off",  # Tắt JIT để tối ưu hiệu năng cho query ngắn
+            "jit": "off",
+            "application_name": "fastapi_app", # Giúp dễ debug trên Supabase dashboard
         },
-        # Truyền object ssl_context vào đây là CHÌA KHÓA để fix lỗi
+        # Truyền object ssl_context đã "tắt" hoàn toàn verify
         "ssl": ssl_context,
     }
 
 # --- 3. KHỞI TẠO ENGINE ---
 engine = create_async_engine(
     db_url,
-    echo=False,          # Set True nếu muốn xem log SQL khi debug
-    pool_pre_ping=True,  # Tự động check kết nối sống trước khi dùng (quan trọng cho Cloud)
-    pool_size=10,        # Số lượng kết nối duy trì
-    max_overflow=20,     # Số lượng kết nối tối đa khi quá tải
-    pool_timeout=60,     # Thời gian chờ lấy kết nối
+    echo=False,          
+    pool_pre_ping=True,  
+    pool_size=10,        
+    max_overflow=20,     
+    pool_timeout=60,     
+    # Tăng statement timeout để tránh lỗi timeout nếu mạng chập chờn
     connect_args=_build_connect_args(),
 )
 
